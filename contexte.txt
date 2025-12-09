@@ -1,0 +1,143 @@
+Contexte du projet : Application de Gestion des Soutenances
+
+L’application à concevoir est une plateforme web destinée à gérer entièrement le processus de soutenance académique dans un établissement. Elle doit permettre d’organiser les sessions, les jurys, les candidats, les plannings et les procès-verbaux, en intégrant une gestion stricte des rôles et des accès (RBAC).
+
+
+1. Administration
+Responsabilités
+
+Gérer les sessions de soutenance (dates d’ouverture et de clôture).
+
+Créer et gérer les salles de soutenance.
+
+Constituer les jurys ou valider ceux proposés.
+
+Assigner à une soutenance le candidat et son jury (en désignant les membres du jury : président, rapporteur, examinateurs, etc.).
+
+Planifier les soutenances (créneaux et salles).
+
+Valider les décisions finales et générer les procès-verbaux (PV).
+
+Consulter toutes les statistiques.
+
+Actions clés
+
+CRUD des soutenances.
+
+Gestion des enseignants (jurys / encadreurs).
+
+Gestion des candidats.
+
+Notifications (convocations, rappels).
+
+Export des données (CSV / PDF).
+
+2. Candidat
+Responsabilités
+
+Créer son dossier de soutenance.
+
+Déposer le mémoire et les annexes pour l’administration (ici, il ne s’agit pas d’une correction en ligne ; le dépôt permet simplement d’archiver un mémoire déjà validé par l’encadreur en présentiel).
+
+Actions clés
+
+Création du dossier → dépôt du PDF.
+
+Réception des notifications (date modifiée, salle modifiée, ordre de passage modifié).
+
+Accès au PV final (si autorisé).
+
+4. Enseignant membre du jury ou encadreur
+Responsabilités
+
+Consulter le mémoire et le dossier complet.
+
+Suivre la soutenance du candidat (sans évaluation en ligne pour ce MVP).
+
+Accéder à la liste des candidats/soutenances pour lesquels il est jury ou encadreur.
+
+Actions clés
+
+Accès aux documents du candidat.
+
+Consultation du planning de soutenance.
+
+Ajout de commentaires ou remarques (si activé).
+
+
+Gestion des droits et accès (RBAC)
+
+L’application doit intégrer un système permettant :
+
+de reconnaître l’utilisateur connecté,
+
+de vérifier son rôle (administration, candidat, encadreur, jury),
+
+d’activer ou masquer les fonctionnalités selon les permissions définies ci-dessus,
+
+d’empêcher tout accès à des données non autorisées.
+
+Chaque écran doit charger uniquement :
+
+les actions autorisées par le rôle,
+
+les données auxquelles l’utilisateur a légitimement accès.
+
+Principales fonctionnalités à couvrir par les interfaces
+Administration
+
+Tableau de bord
+
+Gestion des sessions
+
+Gestion des salles
+
+Gestion des enseignants
+
+Gestion des candidats
+
+Gestion des soutenances (création + assignations)
+
+Planification (créneau/salle)
+
+Gestion des jurys (composition + rôles)
+
+Gestion des convocations
+
+Visualisation et validation des évaluations
+
+Génération des PV
+
+Export CSV / PDF
+
+Candidat
+
+Formulaire de création du dossier
+
+Upload du mémoire et annexes
+
+Page de suivi de la soutenance
+
+Notifications
+
+Enseignant Encadreur
+
+Liste de ses candidats encadrés
+
+Dossiers + mémoires
+
+Commentaires internes
+
+Validation de la version finale
+
+Enseignant Jury
+
+Liste des soutenances où il est jury
+
+Consultation des mémoires
+
+Formulaire de grille d’évaluation
+
+Zone de commentaires
+
+Signature PV

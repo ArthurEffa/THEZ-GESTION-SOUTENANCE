@@ -1,15 +1,27 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from .models import (
-    CustomUser, CandidatProfile, EnseignantProfile,
-    SessionSoutenance, Salle, DossierSoutenance, FichierAnnexe,
-    Jury, Soutenance, ProcesVerbal, Notification, Commentaire
+    CustomUser, Departement, CandidatProfile, EnseignantProfile,
+    SessionSoutenance, Salle, DossierSoutenance, Document,
+    Jury, MembreJury, Soutenance
 )
 
 
 # ============================================================================
 # SERIALIZERS UTILISATEURS
 # ============================================================================
+
+class SimpleUserSerializer(serializers.ModelSerializer):
+    """Serializer minimal pour User (objets imbriqués)"""
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'email', 'full_name', 'role']
+
+    def get_full_name(self, obj):
+        return obj.get_full_name()
+
 
 class CustomUserSerializer(serializers.ModelSerializer):
     """Serializer pour le modèle CustomUser"""
@@ -27,7 +39,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['email', 'username', 'first_name', 'last_name', 'password', 'password2', 'role', 'phone']
+        fields = ['email', 'first_name', 'last_name', 'password', 'password2', 'role', 'phone']
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
@@ -36,35 +48,131 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.pop('password2')
+        # Auto-générer username depuis first_name
+        validated_data['username'] = validated_data['first_name'].lower().replace(' ', '')
         user = CustomUser.objects.create_user(**validated_data)
         return user
+
+
+# ============================================================================
+# SERIALIZERS DÉPARTEMENTS
+# ============================================================================
+
+class SimpleDepartementSerializer(serializers.ModelSerializer):
+    """Serializer minimal pour Departement (objets imbriqués)"""
+    class Meta:
+        model = Departement
+        fields = ['id', 'code', 'nom']
+
+
+class DepartementSerializer(serializers.ModelSerializer):
+    """Serializer pour Departement"""
+    nb_candidats = serializers.SerializerMethodField()
+    nb_enseignants = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Departement
+        fields = ['id', 'code', 'nom', 'nb_candidats', 'nb_enseignants']
+        read_only_fields = ['id']
+
+    def get_nb_candidats(self, obj):
+        return obj.candidats.count()
+
+    def get_nb_enseignants(self, obj):
+        return obj.enseignants.count()
+
+
+# ============================================================================
+# SERIALIZERS PROFILS
+# ============================================================================
+
+class SimpleCandidatProfileSerializer(serializers.ModelSerializer):
+    """Serializer minimal pour CandidatProfile (objets imbriqués)"""
+    nom_complet = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CandidatProfile
+        fields = ['id', 'matricule', 'nom_complet', 'niveau_etude']
+
+    def get_nom_complet(self, obj):
+        return obj.user.get_full_name()
+
+
+class SimpleEnseignantProfileSerializer(serializers.ModelSerializer):
+    """Serializer minimal pour EnseignantProfile (objets imbriqués)"""
+    nom_complet = serializers.SerializerMethodField()
+
+    class Meta:
+        model = EnseignantProfile
+        fields = ['id', 'nom_complet', 'grade']
+
+    def get_nom_complet(self, obj):
+        return obj.user.get_full_name()
 
 
 class CandidatProfileSerializer(serializers.ModelSerializer):
     """Serializer pour le profil Candidat"""
     user = CustomUserSerializer(read_only=True)
+    departement = DepartementSerializer(read_only=True)
     user_email = serializers.EmailField(write_only=True, required=False)
+    departement_id = serializers.UUIDField(write_only=True, required=False, allow_null=True)
 
     class Meta:
         model = CandidatProfile
-        fields = ['id', 'user', 'user_email', 'matricule', 'niveau_etude', 'filiere', 'specialite', 'photo', 'created_at', 'updated_at']
+        fields = ['id', 'user', 'user_email', 'matricule', 'niveau_etude', 'departement', 'departement_id', 'photo', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class EnseignantProfileSerializer(serializers.ModelSerializer):
     """Serializer pour le profil Enseignant"""
     user = CustomUserSerializer(read_only=True)
+    departements = DepartementSerializer(many=True, read_only=True)
     user_email = serializers.EmailField(write_only=True, required=False)
+    departement_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        write_only=True,
+        required=False
+    )
 
     class Meta:
         model = EnseignantProfile
-        fields = ['id', 'user', 'user_email', 'grade', 'departement', 'specialite', 'disponibilites', 'created_at', 'updated_at']
+        fields = ['id', 'user', 'user_email', 'grade', 'departements', 'departement_ids', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def create(self, validated_data):
+        departement_ids = validated_data.pop('departement_ids', [])
+        enseignant = EnseignantProfile.objects.create(**validated_data)
+        if departement_ids:
+            enseignant.departements.set(departement_ids)
+        return enseignant
+
+    def update(self, instance, validated_data):
+        departement_ids = validated_data.pop('departement_ids', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if departement_ids is not None:
+            instance.departements.set(departement_ids)
+        return instance
 
 
 # ============================================================================
 # SERIALIZERS SESSIONS ET SALLES
 # ============================================================================
+
+class SimpleSessionSoutenanceSerializer(serializers.ModelSerializer):
+    """Serializer minimal pour Session (objets imbriqués)"""
+    class Meta:
+        model = SessionSoutenance
+        fields = ['id', 'titre', 'annee_academique', 'statut']
+
+
+class SimpleSalleSerializer(serializers.ModelSerializer):
+    """Serializer minimal pour Salle (objets imbriqués)"""
+    class Meta:
+        model = Salle
+        fields = ['id', 'nom', 'batiment']
+
 
 class SessionSoutenanceSerializer(serializers.ModelSerializer):
     """Serializer pour SessionSoutenance"""
@@ -93,7 +201,7 @@ class SalleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Salle
-        fields = ['id', 'nom', 'batiment', 'capacite', 'equipements', 'est_disponible', 'created_at']
+        fields = ['id', 'nom', 'batiment', 'capacite', 'est_disponible', 'created_at']
         read_only_fields = ['id', 'created_at']
 
 
@@ -101,21 +209,21 @@ class SalleSerializer(serializers.ModelSerializer):
 # SERIALIZERS DOSSIERS
 # ============================================================================
 
-class FichierAnnexeSerializer(serializers.ModelSerializer):
-    """Serializer pour FichierAnnexe"""
+class DocumentSerializer(serializers.ModelSerializer):
+    """Serializer pour Document"""
 
     class Meta:
-        model = FichierAnnexe
-        fields = ['id', 'dossier', 'nom', 'fichier', 'type_document', 'uploaded_at']
+        model = Document
+        fields = ['id', 'dossier', 'nom', 'fichier', 'type_piece', 'est_obligatoire', 'uploaded_at']
         read_only_fields = ['id', 'uploaded_at']
 
 
 class DossierSoutenanceSerializer(serializers.ModelSerializer):
     """Serializer pour DossierSoutenance"""
-    candidat = CandidatProfileSerializer(read_only=True)
-    session = SessionSoutenanceSerializer(read_only=True)
-    encadreur = EnseignantProfileSerializer(read_only=True)
-    fichiers_annexes = FichierAnnexeSerializer(many=True, read_only=True)
+    candidat = SimpleCandidatProfileSerializer(read_only=True)
+    session = SimpleSessionSoutenanceSerializer(read_only=True)
+    encadreur = SimpleEnseignantProfileSerializer(read_only=True)
+    documents = DocumentSerializer(many=True, read_only=True)
 
     candidat_id = serializers.UUIDField(write_only=True, required=False)
     session_id = serializers.UUIDField(write_only=True)
@@ -125,12 +233,12 @@ class DossierSoutenanceSerializer(serializers.ModelSerializer):
         model = DossierSoutenance
         fields = [
             'id', 'candidat', 'candidat_id', 'session', 'session_id',
-            'titre_memoire', 'theme', 'encadreur', 'encadreur_id',
-            'memoire_pdf', 'annexes', 'fichiers_annexes', 'statut',
-            'date_depot', 'date_validation', 'commentaires_admin',
-            'created_at', 'updated_at'
+            'titre_memoire', 'encadreur', 'encadreur_id',
+            'documents', 'statut', 'date_depot', 'date_validation',
+            'commentaires_admin', 'demande_suppression', 'commentaire_suppression',
+            'date_demande_suppression', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'date_depot', 'date_validation', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'date_depot', 'date_validation', 'date_demande_suppression', 'created_at', 'updated_at']
 
 
 class DossierSoutenanceListSerializer(serializers.ModelSerializer):
@@ -138,12 +246,13 @@ class DossierSoutenanceListSerializer(serializers.ModelSerializer):
     candidat_nom = serializers.SerializerMethodField()
     session_titre = serializers.SerializerMethodField()
     encadreur_nom = serializers.SerializerMethodField()
+    nb_documents = serializers.SerializerMethodField()
 
     class Meta:
         model = DossierSoutenance
         fields = [
             'id', 'candidat_nom', 'session_titre', 'titre_memoire',
-            'encadreur_nom', 'statut', 'date_depot', 'date_validation'
+            'encadreur_nom', 'nb_documents', 'statut', 'date_depot', 'date_validation'
         ]
 
     def get_candidat_nom(self, obj):
@@ -155,55 +264,102 @@ class DossierSoutenanceListSerializer(serializers.ModelSerializer):
     def get_encadreur_nom(self, obj):
         return obj.encadreur.user.get_full_name() if obj.encadreur else None
 
+    def get_nb_documents(self, obj):
+        return obj.documents.count()
+
+
+# ============================================================================
+# SERIALIZERS DOSSIERS (SUITE)
+# ============================================================================
+
+class SimpleDossierSoutenanceSerializer(serializers.ModelSerializer):
+    """Serializer minimal pour DossierSoutenance (objets imbriqués)"""
+    candidat_nom = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DossierSoutenance
+        fields = ['id', 'candidat_nom', 'titre_memoire', 'statut']
+
+    def get_candidat_nom(self, obj):
+        return obj.candidat.user.get_full_name()
+
 
 # ============================================================================
 # SERIALIZERS JURYS
 # ============================================================================
 
+class SimpleJurySerializer(serializers.ModelSerializer):
+    """Serializer minimal pour Jury (objets imbriqués)"""
+    class Meta:
+        model = Jury
+        fields = ['id', 'nom', 'statut']
+
+
+class MembreJurySerializer(serializers.ModelSerializer):
+    """Serializer pour MembreJury"""
+    enseignant = SimpleEnseignantProfileSerializer(read_only=True)
+    enseignant_id = serializers.UUIDField(write_only=True)
+
+    class Meta:
+        model = MembreJury
+        fields = ['id', 'enseignant', 'enseignant_id', 'role', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
 class JurySerializer(serializers.ModelSerializer):
     """Serializer pour Jury"""
-    president = EnseignantProfileSerializer(read_only=True)
-    rapporteur = EnseignantProfileSerializer(read_only=True)
-    examinateurs = EnseignantProfileSerializer(many=True, read_only=True)
-    session = SessionSoutenanceSerializer(read_only=True)
+    session = SimpleSessionSoutenanceSerializer(read_only=True)
+    composition = MembreJurySerializer(many=True, read_only=True)
 
-    president_id = serializers.UUIDField(write_only=True, required=False, allow_null=True)
-    rapporteur_id = serializers.UUIDField(write_only=True, required=False, allow_null=True)
-    examinateurs_ids = serializers.ListField(
-        child=serializers.UUIDField(),
-        write_only=True,
-        required=False
-    )
     session_id = serializers.UUIDField(write_only=True)
+    membres_data = serializers.ListField(
+        child=serializers.DictField(),
+        write_only=True,
+        required=False,
+        help_text="Liste des membres: [{'enseignant_id': 'uuid', 'role': 'PRESIDENT'}, ...]"
+    )
 
     class Meta:
         model = Jury
         fields = [
-            'id', 'nom', 'session', 'session_id', 'president', 'president_id',
-            'rapporteur', 'rapporteur_id', 'examinateurs', 'examinateurs_ids',
+            'id', 'nom', 'session', 'session_id', 'composition', 'membres_data',
             'statut', 'date_validation', 'created_at'
         ]
         read_only_fields = ['id', 'date_validation', 'created_at']
 
+    def create(self, validated_data):
+        membres_data = validated_data.pop('membres_data', [])
+        jury = Jury.objects.create(**validated_data)
+
+        for membre in membres_data:
+            MembreJury.objects.create(
+                jury=jury,
+                enseignant_id=membre['enseignant_id'],
+                role=membre['role']
+            )
+
+        return jury
+
 
 class JuryListSerializer(serializers.ModelSerializer):
     """Serializer simplifié pour liste de jurys"""
-    president_nom = serializers.SerializerMethodField()
-    rapporteur_nom = serializers.SerializerMethodField()
-    nb_examinateurs = serializers.SerializerMethodField()
+    session_titre = serializers.SerializerMethodField()
+    nb_membres = serializers.SerializerMethodField()
+    president = serializers.SerializerMethodField()
 
     class Meta:
         model = Jury
-        fields = ['id', 'nom', 'president_nom', 'rapporteur_nom', 'nb_examinateurs', 'statut', 'created_at']
+        fields = ['id', 'nom', 'session_titre', 'nb_membres', 'president', 'statut', 'created_at']
 
-    def get_president_nom(self, obj):
-        return obj.president.user.get_full_name() if obj.president else None
+    def get_session_titre(self, obj):
+        return obj.session.titre
 
-    def get_rapporteur_nom(self, obj):
-        return obj.rapporteur.user.get_full_name() if obj.rapporteur else None
+    def get_nb_membres(self, obj):
+        return obj.composition.count()
 
-    def get_nb_examinateurs(self, obj):
-        return obj.examinateurs.count()
+    def get_president(self, obj):
+        president_membre = obj.composition.filter(role='PRESIDENT').first()
+        return president_membre.enseignant.user.get_full_name() if president_membre else None
 
 
 # ============================================================================
@@ -212,25 +368,23 @@ class JuryListSerializer(serializers.ModelSerializer):
 
 class SoutenanceSerializer(serializers.ModelSerializer):
     """Serializer pour Soutenance"""
-    dossier = DossierSoutenanceSerializer(read_only=True)
-    jury = JurySerializer(read_only=True)
-    session = SessionSoutenanceSerializer(read_only=True)
-    salle = SalleSerializer(read_only=True)
+    dossier = SimpleDossierSoutenanceSerializer(read_only=True)
+    jury = SimpleJurySerializer(read_only=True)
+    session = SimpleSessionSoutenanceSerializer(read_only=True)
+    salle = SimpleSalleSerializer(read_only=True)
 
     dossier_id = serializers.UUIDField(write_only=True)
     jury_id = serializers.UUIDField(write_only=True, required=False, allow_null=True)
-    session_id = serializers.UUIDField(write_only=True)
     salle_id = serializers.UUIDField(write_only=True, required=False, allow_null=True)
 
     class Meta:
         model = Soutenance
         fields = [
-            'id', 'dossier', 'dossier_id', 'jury', 'jury_id', 'session', 'session_id',
+            'id', 'dossier', 'dossier_id', 'jury', 'jury_id', 'session',
             'salle', 'salle_id', 'date_heure', 'duree_minutes', 'ordre_passage',
-            'statut', 'note_finale', 'mention', 'observations', 'pv_genere',
-            'pv_file', 'created_at', 'updated_at'
+            'statut', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'pv_genere', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'session', 'created_at', 'updated_at']
 
 
 class SoutenanceListSerializer(serializers.ModelSerializer):
@@ -238,12 +392,13 @@ class SoutenanceListSerializer(serializers.ModelSerializer):
     candidat_nom = serializers.SerializerMethodField()
     titre_memoire = serializers.SerializerMethodField()
     salle_nom = serializers.SerializerMethodField()
+    jury_nom = serializers.SerializerMethodField()
 
     class Meta:
         model = Soutenance
         fields = [
             'id', 'candidat_nom', 'titre_memoire', 'date_heure',
-            'salle_nom', 'ordre_passage', 'statut', 'note_finale', 'mention'
+            'salle_nom', 'jury_nom', 'ordre_passage', 'statut'
         ]
 
     def get_candidat_nom(self, obj):
@@ -255,54 +410,5 @@ class SoutenanceListSerializer(serializers.ModelSerializer):
     def get_salle_nom(self, obj):
         return f"{obj.salle.nom} ({obj.salle.batiment})" if obj.salle else None
 
-
-# ============================================================================
-# SERIALIZERS PROCÈS-VERBAUX
-# ============================================================================
-
-class ProcesVerbalSerializer(serializers.ModelSerializer):
-    """Serializer pour ProcesVerbal"""
-    soutenance = SoutenanceSerializer(read_only=True)
-    soutenance_id = serializers.UUIDField(write_only=True)
-
-    class Meta:
-        model = ProcesVerbal
-        fields = [
-            'id', 'soutenance', 'soutenance_id', 'numero_pv', 'contenu',
-            'date_generation', 'fichier_pdf', 'signatures_jury',
-            'est_valide', 'date_validation', 'created_at'
-        ]
-        read_only_fields = ['id', 'date_generation', 'created_at']
-
-
-# ============================================================================
-# SERIALIZERS NOTIFICATIONS & COMMENTAIRES
-# ============================================================================
-
-class NotificationSerializer(serializers.ModelSerializer):
-    """Serializer pour Notification"""
-    destinataire = CustomUserSerializer(read_only=True)
-    soutenance = SoutenanceListSerializer(read_only=True)
-
-    class Meta:
-        model = Notification
-        fields = [
-            'id', 'destinataire', 'type', 'titre', 'message',
-            'soutenance', 'est_lu', 'date_envoi', 'created_at'
-        ]
-        read_only_fields = ['id', 'date_envoi', 'created_at']
-
-
-class CommentaireSerializer(serializers.ModelSerializer):
-    """Serializer pour Commentaire"""
-    auteur = CustomUserSerializer(read_only=True)
-    dossier = DossierSoutenanceListSerializer(read_only=True)
-    dossier_id = serializers.UUIDField(write_only=True)
-
-    class Meta:
-        model = Commentaire
-        fields = [
-            'id', 'dossier', 'dossier_id', 'auteur', 'contenu',
-            'est_interne', 'created_at'
-        ]
-        read_only_fields = ['id', 'created_at']
+    def get_jury_nom(self, obj):
+        return obj.jury.nom if obj.jury else None

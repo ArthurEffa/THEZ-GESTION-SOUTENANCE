@@ -52,6 +52,27 @@ class CustomUser(AbstractUser):
 
 
 # ============================================================================
+# DÉPARTEMENTS
+# ============================================================================
+
+class Departement(models.Model):
+    """
+    Département académique
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.CharField(max_length=20, unique=True, verbose_name="Code")
+    nom = models.CharField(max_length=200, verbose_name="Nom")
+
+    class Meta:
+        verbose_name = "Département"
+        verbose_name_plural = "Départements"
+        ordering = ['nom']
+
+    def __str__(self):
+        return f"{self.code} - {self.nom}"
+
+
+# ============================================================================
 # PROFILS UTILISATEURS
 # ============================================================================
 
@@ -77,8 +98,14 @@ class CandidatProfile(models.Model):
         choices=NiveauEtude.choices,
         verbose_name="Niveau d'étude"
     )
-    filiere = models.CharField(max_length=100, verbose_name="Filière")
-    specialite = models.CharField(max_length=100, verbose_name="Spécialité")
+    departement = models.ForeignKey(
+        'Departement',
+        on_delete=models.PROTECT,
+        related_name='candidats',
+        verbose_name="Département",
+        null=True,
+        blank=True
+    )
     photo = models.ImageField(
         upload_to='photos/candidats/',
         blank=True,
@@ -119,13 +146,10 @@ class EnseignantProfile(models.Model):
         choices=Grade.choices,
         verbose_name="Grade"
     )
-    departement = models.CharField(max_length=100, verbose_name="Département")
-    specialite = models.CharField(max_length=100, verbose_name="Spécialité")
-    disponibilites = models.JSONField(
-        default=dict,
-        blank=True,
-        verbose_name="Disponibilités",
-        help_text="Format JSON pour les disponibilités de planification"
+    departements = models.ManyToManyField(
+        'Departement',
+        related_name='enseignants',
+        verbose_name="Départements"
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Modifié le")
@@ -193,12 +217,6 @@ class Salle(models.Model):
     nom = models.CharField(max_length=100, verbose_name="Nom")
     batiment = models.CharField(max_length=100, verbose_name="Bâtiment")
     capacite = models.IntegerField(verbose_name="Capacité")
-    equipements = models.JSONField(
-        default=list,
-        blank=True,
-        verbose_name="Équipements",
-        help_text="Liste des équipements disponibles"
-    )
     est_disponible = models.BooleanField(default=True, verbose_name="Disponible")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
 
@@ -239,7 +257,6 @@ class DossierSoutenance(models.Model):
         verbose_name="Session"
     )
     titre_memoire = models.CharField(max_length=300, verbose_name="Titre du mémoire")
-    theme = models.CharField(max_length=200, verbose_name="Thème")
     encadreur = models.ForeignKey(
         EnseignantProfile,
         on_delete=models.SET_NULL,
@@ -247,19 +264,6 @@ class DossierSoutenance(models.Model):
         blank=True,
         related_name='dossiers_encadres',
         verbose_name="Encadreur"
-    )
-    memoire_pdf = models.FileField(
-        upload_to='memoires/',
-        validators=[FileExtensionValidator(allowed_extensions=['pdf'])],
-        blank=True,
-        null=True,
-        verbose_name="Mémoire PDF"
-    )
-    annexes = models.JSONField(
-        default=list,
-        blank=True,
-        verbose_name="Annexes",
-        help_text="Liste des fichiers annexes"
     )
     statut = models.CharField(
         max_length=20,
@@ -270,6 +274,11 @@ class DossierSoutenance(models.Model):
     date_depot = models.DateTimeField(auto_now_add=True, verbose_name="Date de dépôt")
     date_validation = models.DateTimeField(null=True, blank=True, verbose_name="Date de validation")
     commentaires_admin = models.TextField(blank=True, verbose_name="Commentaires admin")
+
+    # Demande de suppression
+    demande_suppression = models.BooleanField(default=False, verbose_name="Demande de suppression")
+    commentaire_suppression = models.TextField(blank=True, verbose_name="Commentaire suppression")
+    date_demande_suppression = models.DateTimeField(null=True, blank=True, verbose_name="Date demande suppression")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Modifié le")
 
@@ -282,39 +291,43 @@ class DossierSoutenance(models.Model):
         return f"{self.candidat.user.get_full_name()} - {self.titre_memoire[:50]}"
 
 
-class FichierAnnexe(models.Model):
+class Document(models.Model):
     """
-    Fichiers annexes liés à un dossier
+    Document/Pièce jointe d'un dossier de soutenance
     """
-    class TypeDocument(models.TextChoices):
+    class TypePiece(models.TextChoices):
+        MEMOIRE = 'MEMOIRE', 'Mémoire'
+        RECU_PAIEMENT = 'RECU_PAIEMENT', 'Reçu de paiement'
+        ACCORD_STAGE = 'ACCORD_STAGE', 'Accord de stage'
+        LETTRE_MISE_EN_STAGE = 'LETTRE_MISE_EN_STAGE', 'Lettre de mise en stage'
+        CERTIFICAT_SCOLARITE = 'CERTIFICAT_SCOLARITE', 'Certificat de scolarité'
         ATTESTATION = 'ATTESTATION', 'Attestation'
-        FICHE_EVAL = 'FICHE_EVAL', 'Fiche d\'évaluation'
         AUTRE = 'AUTRE', 'Autre'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     dossier = models.ForeignKey(
         DossierSoutenance,
         on_delete=models.CASCADE,
-        related_name='fichiers_annexes',
+        related_name='documents',
         verbose_name="Dossier"
     )
-    nom = models.CharField(max_length=200, verbose_name="Nom du fichier")
-    fichier = models.FileField(upload_to='annexes/', verbose_name="Fichier")
-    type_document = models.CharField(
-        max_length=20,
-        choices=TypeDocument.choices,
-        default=TypeDocument.AUTRE,
-        verbose_name="Type de document"
+    nom = models.CharField(max_length=200, verbose_name="Nom du document")
+    fichier = models.FileField(upload_to='documents/', verbose_name="Fichier")
+    type_piece = models.CharField(
+        max_length=30,
+        choices=TypePiece.choices,
+        verbose_name="Type de pièce"
     )
+    est_obligatoire = models.BooleanField(default=False, verbose_name="Obligatoire")
     uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name="Uploadé le")
 
     class Meta:
-        verbose_name = "Fichier Annexe"
-        verbose_name_plural = "Fichiers Annexes"
+        verbose_name = "Document"
+        verbose_name_plural = "Documents"
         ordering = ['-uploaded_at']
 
     def __str__(self):
-        return f"{self.nom} ({self.dossier.candidat.matricule})"
+        return f"{self.get_type_piece_display()} - {self.nom}"
 
 
 # ============================================================================
@@ -338,25 +351,11 @@ class Jury(models.Model):
         related_name='jurys',
         verbose_name="Session"
     )
-    president = models.ForeignKey(
+    membres = models.ManyToManyField(
         EnseignantProfile,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='jurys_presides',
-        verbose_name="Président"
-    )
-    rapporteur = models.ForeignKey(
-        EnseignantProfile,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='jurys_rapportes',
-        verbose_name="Rapporteur"
-    )
-    examinateurs = models.ManyToManyField(
-        EnseignantProfile,
-        related_name='jurys_examines',
-        blank=True,
-        verbose_name="Examinateurs"
+        through='MembreJury',
+        related_name='jurys',
+        verbose_name="Membres du jury"
     )
     statut = models.CharField(
         max_length=20,
@@ -376,6 +375,46 @@ class Jury(models.Model):
         return self.nom
 
 
+class MembreJury(models.Model):
+    """
+    Table intermédiaire pour associer un enseignant à un jury avec un rôle spécifique
+    """
+    class Role(models.TextChoices):
+        PRESIDENT = 'PRESIDENT', 'Président'
+        RAPPORTEUR = 'RAPPORTEUR', 'Rapporteur'
+        ENCADREUR = 'ENCADREUR', 'Encadreur'
+        EXAMINATEUR = 'EXAMINATEUR', 'Examinateur'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    jury = models.ForeignKey(
+        Jury,
+        on_delete=models.CASCADE,
+        related_name='composition',
+        verbose_name="Jury"
+    )
+    enseignant = models.ForeignKey(
+        EnseignantProfile,
+        on_delete=models.CASCADE,
+        related_name='participations_jury',
+        verbose_name="Enseignant"
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=Role.choices,
+        verbose_name="Rôle"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ajouté le")
+
+    class Meta:
+        verbose_name = "Membre du Jury"
+        verbose_name_plural = "Membres du Jury"
+        unique_together = ['jury', 'enseignant', 'role']
+        ordering = ['role', 'enseignant__user__last_name']
+
+    def __str__(self):
+        return f"{self.enseignant.user.get_full_name()} - {self.get_role_display()} ({self.jury.nom})"
+
+
 # ============================================================================
 # SOUTENANCES
 # ============================================================================
@@ -389,13 +428,6 @@ class Soutenance(models.Model):
         EN_COURS = 'EN_COURS', 'En cours'
         TERMINEE = 'TERMINEE', 'Terminée'
         ANNULEE = 'ANNULEE', 'Annulée'
-
-    class Mention(models.TextChoices):
-        PASSABLE = 'PASSABLE', 'Passable'
-        ASSEZ_BIEN = 'ASSEZ_BIEN', 'Assez Bien'
-        BIEN = 'BIEN', 'Bien'
-        TRES_BIEN = 'TRES_BIEN', 'Très Bien'
-        EXCELLENT = 'EXCELLENT', 'Excellent'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     dossier = models.OneToOneField(
@@ -411,12 +443,6 @@ class Soutenance(models.Model):
         related_name='soutenances',
         verbose_name="Jury"
     )
-    session = models.ForeignKey(
-        SessionSoutenance,
-        on_delete=models.CASCADE,
-        related_name='soutenances',
-        verbose_name="Session"
-    )
     salle = models.ForeignKey(
         Salle,
         on_delete=models.SET_NULL,
@@ -426,35 +452,13 @@ class Soutenance(models.Model):
         verbose_name="Salle"
     )
     date_heure = models.DateTimeField(null=True, blank=True, verbose_name="Date et heure")
-    duree_minutes = models.IntegerField(default=60, verbose_name="Durée (minutes)")
+    duree_minutes = models.IntegerField(default=45, verbose_name="Durée (minutes)")
     ordre_passage = models.IntegerField(null=True, blank=True, verbose_name="Ordre de passage")
     statut = models.CharField(
         max_length=20,
         choices=Statut.choices,
         default=Statut.PLANIFIEE,
         verbose_name="Statut"
-    )
-    note_finale = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name="Note finale"
-    )
-    mention = models.CharField(
-        max_length=20,
-        choices=Mention.choices,
-        null=True,
-        blank=True,
-        verbose_name="Mention"
-    )
-    observations = models.TextField(blank=True, verbose_name="Observations")
-    pv_genere = models.BooleanField(default=False, verbose_name="PV généré")
-    pv_file = models.FileField(
-        upload_to='pv/',
-        blank=True,
-        null=True,
-        verbose_name="Fichier PV"
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Modifié le")
@@ -464,209 +468,10 @@ class Soutenance(models.Model):
         verbose_name_plural = "Soutenances"
         ordering = ['date_heure', 'ordre_passage']
 
+    @property
+    def session(self):
+        """Récupérer la session depuis le dossier"""
+        return self.dossier.session
+
     def __str__(self):
         return f"Soutenance de {self.dossier.candidat.user.get_full_name()}"
-
-    def calculer_mention(self):
-        """Calcule la mention selon la note finale"""
-        if self.note_finale is None:
-            return None
-
-        note = float(self.note_finale)
-        if note < 10:
-            return None
-        elif note < 12:
-            return self.Mention.PASSABLE
-        elif note < 14:
-            return self.Mention.ASSEZ_BIEN
-        elif note < 16:
-            return self.Mention.BIEN
-        elif note < 18:
-            return self.Mention.TRES_BIEN
-        else:
-            return self.Mention.EXCELLENT
-
-
-# ============================================================================
-# EVALUATIONS
-# ============================================================================
-
-class Evaluation(models.Model):
-    """
-    Évaluation d'un membre du jury pour une soutenance
-    """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    soutenance = models.ForeignKey(
-        Soutenance,
-        on_delete=models.CASCADE,
-        related_name='evaluations',
-        verbose_name="Soutenance"
-    )
-    evaluateur = models.ForeignKey(
-        EnseignantProfile,
-        on_delete=models.CASCADE,
-        related_name='evaluations',
-        verbose_name="Évaluateur"
-    )
-    note_memoire = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        verbose_name="Note mémoire (/20)"
-    )
-    note_presentation = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        verbose_name="Note présentation (/20)"
-    )
-    note_reponses = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        verbose_name="Note réponses (/20)"
-    )
-    commentaires = models.TextField(blank=True, verbose_name="Commentaires")
-    date_evaluation = models.DateTimeField(auto_now_add=True, verbose_name="Date d'évaluation")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
-
-    class Meta:
-        verbose_name = "Évaluation"
-        verbose_name_plural = "Évaluations"
-        unique_together = ['soutenance', 'evaluateur']
-        ordering = ['-date_evaluation']
-
-    def __str__(self):
-        return f"Évaluation de {self.evaluateur.user.get_full_name()} pour {self.soutenance}"
-
-    @property
-    def moyenne(self):
-        """Calcule la moyenne pondérée de l'évaluation"""
-        return (
-            float(self.note_memoire) * 0.4 +
-            float(self.note_presentation) * 0.3 +
-            float(self.note_reponses) * 0.3
-        )
-
-
-# ============================================================================
-# PROCÈS-VERBAUX
-# ============================================================================
-
-class ProcesVerbal(models.Model):
-    """
-    Procès-verbal d'une soutenance
-    """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    soutenance = models.OneToOneField(
-        Soutenance,
-        on_delete=models.CASCADE,
-        related_name='proces_verbal',
-        verbose_name="Soutenance"
-    )
-    numero_pv = models.CharField(max_length=50, unique=True, verbose_name="Numéro PV")
-    contenu = models.TextField(verbose_name="Contenu")
-    date_generation = models.DateTimeField(auto_now_add=True, verbose_name="Date de génération")
-    fichier_pdf = models.FileField(upload_to='pv/', verbose_name="Fichier PDF")
-    signatures_jury = models.JSONField(
-        default=dict,
-        blank=True,
-        verbose_name="Signatures du jury",
-        help_text="Format: {president: true/false, rapporteur: true/false, ...}"
-    )
-    est_valide = models.BooleanField(default=False, verbose_name="Validé")
-    date_validation = models.DateTimeField(null=True, blank=True, verbose_name="Date de validation")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
-
-    class Meta:
-        verbose_name = "Procès-Verbal"
-        verbose_name_plural = "Procès-Verbaux"
-        ordering = ['-date_generation']
-
-    def __str__(self):
-        return f"PV {self.numero_pv} - {self.soutenance.dossier.candidat.user.get_full_name()}"
-
-
-# ============================================================================
-# NOTIFICATIONS
-# ============================================================================
-
-class Notification(models.Model):
-    """
-    Système de notifications pour les utilisateurs
-    """
-    class Type(models.TextChoices):
-        CONVOCATION = 'CONVOCATION', 'Convocation'
-        RAPPEL = 'RAPPEL', 'Rappel'
-        MODIFICATION = 'MODIFICATION', 'Modification'
-        INFO = 'INFO', 'Information'
-        VALIDATION = 'VALIDATION', 'Validation'
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    destinataire = models.ForeignKey(
-        CustomUser,
-        on_delete=models.CASCADE,
-        related_name='notifications',
-        verbose_name="Destinataire"
-    )
-    type = models.CharField(
-        max_length=20,
-        choices=Type.choices,
-        verbose_name="Type"
-    )
-    titre = models.CharField(max_length=200, verbose_name="Titre")
-    message = models.TextField(verbose_name="Message")
-    soutenance = models.ForeignKey(
-        Soutenance,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name='notifications',
-        verbose_name="Soutenance"
-    )
-    est_lu = models.BooleanField(default=False, verbose_name="Lu")
-    date_envoi = models.DateTimeField(auto_now_add=True, verbose_name="Date d'envoi")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
-
-    class Meta:
-        verbose_name = "Notification"
-        verbose_name_plural = "Notifications"
-        ordering = ['-date_envoi']
-
-    def __str__(self):
-        return f"{self.get_type_display()} - {self.destinataire.get_full_name()}"
-
-
-# ============================================================================
-# COMMENTAIRES
-# ============================================================================
-
-class Commentaire(models.Model):
-    """
-    Commentaires sur les dossiers de soutenance
-    """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    dossier = models.ForeignKey(
-        DossierSoutenance,
-        on_delete=models.CASCADE,
-        related_name='commentaires',
-        verbose_name="Dossier"
-    )
-    auteur = models.ForeignKey(
-        CustomUser,
-        on_delete=models.CASCADE,
-        related_name='commentaires',
-        verbose_name="Auteur"
-    )
-    contenu = models.TextField(verbose_name="Contenu")
-    est_interne = models.BooleanField(
-        default=False,
-        verbose_name="Interne",
-        help_text="Visible seulement par admin et encadreur"
-    )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le")
-
-    class Meta:
-        verbose_name = "Commentaire"
-        verbose_name_plural = "Commentaires"
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"Commentaire de {self.auteur.get_full_name()} sur {self.dossier}"

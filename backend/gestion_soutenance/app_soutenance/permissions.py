@@ -171,3 +171,75 @@ class CanPlanSoutenance(permissions.BasePermission):
             return request.user and request.user.is_authenticated
         # Seulement admin peut créer/modifier/supprimer
         return request.user and request.user.is_authenticated and request.user.role == 'ADMIN'
+
+
+class CandidatProfilePermission(permissions.BasePermission):
+    """
+    Permission pour les profils candidats:
+    - Admin: tout
+    - Candidat: modifier son propre profil uniquement
+    - Enseignant: read-only
+    """
+    def has_permission(self, request, view):
+        # Tout le monde authentifié peut lire (filtré par get_queryset)
+        if request.method in permissions.SAFE_METHODS:
+            return request.user and request.user.is_authenticated
+
+        # Création: seulement admin
+        if request.method == 'POST':
+            return request.user and request.user.is_authenticated and request.user.role == 'ADMIN'
+
+        # Pour PUT/PATCH/DELETE, on vérifie au niveau objet
+        return request.user and request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        # Admin a tous les droits
+        if request.user.role == 'ADMIN':
+            return True
+
+        # Enseignant en read-only
+        if request.user.role == 'ENSEIGNANT':
+            return request.method in permissions.SAFE_METHODS
+
+        # Candidat peut modifier son propre profil
+        if request.user.role == 'CANDIDAT':
+            return obj.user == request.user
+
+        return False
+
+
+class DossierSoutenancePermission(permissions.BasePermission):
+    """
+    Permission pour les dossiers de soutenance:
+    - Admin: tout
+    - Candidat: créer et modifier ses propres dossiers
+    - Enseignant: read-only pour les dossiers qu'ils encadrent
+    """
+    def has_permission(self, request, view):
+        # Tout le monde authentifié peut lire (filtré par get_queryset)
+        if request.method in permissions.SAFE_METHODS:
+            return request.user and request.user.is_authenticated
+
+        # Création: admin et candidat
+        if request.method == 'POST':
+            return request.user and request.user.is_authenticated and \
+                   request.user.role in ['ADMIN', 'CANDIDAT']
+
+        # Pour PUT/PATCH/DELETE, on vérifie au niveau objet
+        return request.user and request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        # Admin a tous les droits
+        if request.user.role == 'ADMIN':
+            return True
+
+        # Enseignant en read-only
+        if request.user.role == 'ENSEIGNANT':
+            return request.method in permissions.SAFE_METHODS
+
+        # Candidat peut modifier son propre dossier
+        if request.user.role == 'CANDIDAT':
+            if hasattr(obj, 'candidat'):
+                return obj.candidat.user == request.user
+
+        return False

@@ -4,26 +4,25 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema, extend_schema_view
 
 from .models import (
-    CustomUser, CandidatProfile, EnseignantProfile,
-    SessionSoutenance, Salle, DossierSoutenance, FichierAnnexe,
-    Jury, Soutenance, ProcesVerbal, Notification, Commentaire
+    CustomUser, Departement, CandidatProfile, EnseignantProfile,
+    SessionSoutenance, Salle, DossierSoutenance, Document,
+    Jury, MembreJury, Soutenance
 )
 from .serializers import (
     CustomUserSerializer, UserRegistrationSerializer,
-    CandidatProfileSerializer, EnseignantProfileSerializer,
+    DepartementSerializer, CandidatProfileSerializer, EnseignantProfileSerializer,
     SessionSoutenanceSerializer, SalleSerializer,
     DossierSoutenanceSerializer, DossierSoutenanceListSerializer,
-    FichierAnnexeSerializer, JurySerializer, JuryListSerializer,
-    SoutenanceSerializer, SoutenanceListSerializer,
-    ProcesVerbalSerializer, NotificationSerializer, CommentaireSerializer
+    DocumentSerializer, JurySerializer, JuryListSerializer,
+    MembreJurySerializer, SoutenanceSerializer, SoutenanceListSerializer
 )
 from .permissions import (
     IsAdmin, IsCandidat, IsEnseignant, IsAdminOrReadOnly,
     IsOwnerOrAdmin, IsCandidatOwnerOrAdmin, CanCreateDossier,
-    CanValidateDossier, CanManageJury, CanPlanSoutenance
+    CanValidateDossier, CanManageJury, CanPlanSoutenance,
+    CandidatProfilePermission, DossierSoutenancePermission
 )
 
 
@@ -31,13 +30,6 @@ from .permissions import (
 # VIEWSETS UTILISATEURS
 # ============================================================================
 
-@extend_schema_view(
-    list=extend_schema(description="Liste de tous les utilisateurs (Admin seulement)"),
-    retrieve=extend_schema(description="Détails d'un utilisateur"),
-    create=extend_schema(description="Créer un utilisateur (Admin seulement)"),
-    update=extend_schema(description="Modifier un utilisateur (Admin seulement)"),
-    destroy=extend_schema(description="Supprimer un utilisateur (Admin seulement)"),
-)
 class CustomUserViewSet(viewsets.ModelViewSet):
     """ViewSet pour gérer les utilisateurs"""
     queryset = CustomUser.objects.all()
@@ -55,15 +47,33 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+# ============================================================================
+# VIEWSETS DÉPARTEMENTS
+# ============================================================================
+
+class DepartementViewSet(viewsets.ModelViewSet):
+    """ViewSet pour gérer les départements"""
+    queryset = Departement.objects.all()
+    serializer_class = DepartementSerializer
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['code', 'nom']
+    ordering_fields = ['code', 'nom']
+
+
+# ============================================================================
+# VIEWSETS PROFILS
+# ============================================================================
+
 class CandidatProfileViewSet(viewsets.ModelViewSet):
     """ViewSet pour gérer les profils candidats"""
     queryset = CandidatProfile.objects.all()
     serializer_class = CandidatProfileSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CandidatProfilePermission]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['matricule', 'user__first_name', 'user__last_name', 'user__email']
     ordering_fields = ['created_at', 'matricule']
-    filterset_fields = ['niveau_etude', 'filiere']
+    filterset_fields = ['niveau_etude', 'departement']
 
     def get_queryset(self):
         """Filtrer selon le rôle"""
@@ -71,7 +81,32 @@ class CandidatProfileViewSet(viewsets.ModelViewSet):
         if user.role == 'ADMIN':
             return CandidatProfile.objects.all()
         elif user.role == 'CANDIDAT':
+            # Candidat voit uniquement son propre profil
             return CandidatProfile.objects.filter(user=user)
+        elif user.role == 'ENSEIGNANT':
+            # Enseignant voit:
+            # 1. Tous les candidats de son/ses département(s)
+            # 2. Candidats qu'il encadre
+            # 3. Candidats dont il est membre du jury
+            from django.db.models import Q
+
+            enseignant_profile = user.enseignant_profile
+
+            # Candidats des départements de l'enseignant
+            candidats_departement = Q(departement__in=enseignant_profile.departements.all())
+
+            # Candidats qu'il encadre
+            candidats_encadres = Q(dossiers__encadreur=enseignant_profile)
+
+            # Candidats dont il est membre du jury
+            candidats_jury = Q(
+                dossiers__soutenance__jury__composition__enseignant=enseignant_profile
+            )
+
+            return CandidatProfile.objects.filter(
+                candidats_departement | candidats_encadres | candidats_jury
+            ).distinct()
+
         return CandidatProfile.objects.none()
 
 
@@ -81,9 +116,9 @@ class EnseignantProfileViewSet(viewsets.ModelViewSet):
     serializer_class = EnseignantProfileSerializer
     permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
-    search_fields = ['user__first_name', 'user__last_name', 'user__email', 'departement']
+    search_fields = ['user__first_name', 'user__last_name', 'user__email']
     ordering_fields = ['created_at', 'user__last_name']
-    filterset_fields = ['grade', 'departement']
+    filterset_fields = ['grade', 'departements']
 
 
 # ============================================================================
@@ -145,11 +180,11 @@ class SalleViewSet(viewsets.ModelViewSet):
 class DossierSoutenanceViewSet(viewsets.ModelViewSet):
     """ViewSet pour gérer les dossiers de soutenance"""
     queryset = DossierSoutenance.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, DossierSoutenancePermission]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
-    search_fields = ['titre_memoire', 'theme', 'candidat__matricule', 'candidat__user__last_name']
+    search_fields = ['titre_memoire', 'candidat__matricule', 'candidat__user__last_name']
     ordering_fields = ['date_depot', 'created_at']
-    filterset_fields = ['statut', 'session', 'candidat__niveau_etude']
+    filterset_fields = ['statut', 'session', 'candidat__niveau_etude', 'demande_suppression']
 
     def get_serializer_class(self):
         """Utiliser un serializer différent pour la liste"""
@@ -165,16 +200,17 @@ class DossierSoutenanceViewSet(viewsets.ModelViewSet):
         elif user.role == 'CANDIDAT':
             return DossierSoutenance.objects.filter(candidat__user=user)
         elif user.role == 'ENSEIGNANT':
-            # Enseignant voit les dossiers qu'il encadre
             return DossierSoutenance.objects.filter(encadreur__user=user)
         return DossierSoutenance.objects.none()
 
     def perform_create(self, serializer):
-        """Associer automatiquement le candidat connecté"""
+        """Associer automatiquement le candidat connecté - seuls les candidats peuvent créer"""
         if self.request.user.role == 'CANDIDAT':
             serializer.save(candidat=self.request.user.candidat_profile)
         else:
-            serializer.save()
+            # Seuls les candidats peuvent créer des dossiers
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Seuls les candidats peuvent créer des dossiers de soutenance.")
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanValidateDossier])
     def valider(self, request, pk=None):
@@ -183,14 +219,6 @@ class DossierSoutenanceViewSet(viewsets.ModelViewSet):
         dossier.statut = 'VALIDE'
         dossier.date_validation = timezone.now()
         dossier.save()
-
-        # Créer une notification pour le candidat
-        Notification.objects.create(
-            destinataire=dossier.candidat.user,
-            type='VALIDATION',
-            titre='Dossier validé',
-            message=f'Votre dossier "{dossier.titre_memoire}" a été validé par l\'administration.'
-        )
 
         serializer = self.get_serializer(dossier)
         return Response(serializer.data)
@@ -203,25 +231,90 @@ class DossierSoutenanceViewSet(viewsets.ModelViewSet):
         dossier.commentaires_admin = request.data.get('commentaires', '')
         dossier.save()
 
-        # Créer une notification pour le candidat
-        Notification.objects.create(
-            destinataire=dossier.candidat.user,
-            type='INFO',
-            titre='Dossier rejeté',
-            message=f'Votre dossier "{dossier.titre_memoire}" a été rejeté. Consultez les commentaires.'
-        )
+        serializer = self.get_serializer(dossier)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated, IsCandidat])
+    def mes_dossiers(self, request):
+        """Récupérer les dossiers du candidat connecté"""
+        dossiers = DossierSoutenance.objects.filter(candidat__user=request.user)
+        serializer = self.get_serializer(dossiers, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsCandidat])
+    def demander_suppression(self, request, pk=None):
+        """Candidat demande la suppression de son dossier"""
+        dossier = self.get_object()
+
+        # Vérifier que c'est bien son dossier
+        if dossier.candidat.user != request.user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Vous ne pouvez pas demander la suppression de ce dossier.")
+
+        dossier.demande_suppression = True
+        dossier.commentaire_suppression = request.data.get('commentaire', '')
+        dossier.date_demande_suppression = timezone.now()
+        dossier.save()
 
         serializer = self.get_serializer(dossier)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['get'])
-    def mes_dossiers(self, request):
-        """Récupérer les dossiers de l'utilisateur connecté (Candidat)"""
-        if request.user.role == 'CANDIDAT':
-            dossiers = DossierSoutenance.objects.filter(candidat__user=request.user)
-            serializer = self.get_serializer(dossiers, many=True)
-            return Response(serializer.data)
-        return Response({'detail': 'Non autorisé'}, status=status.HTTP_403_FORBIDDEN)
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdmin])
+    def accepter_suppression(self, request, pk=None):
+        """Admin accepte et supprime le dossier"""
+        dossier = self.get_object()
+
+        if not dossier.demande_suppression:
+            return Response(
+                {'detail': 'Aucune demande de suppression pour ce dossier.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Supprimer le dossier
+        dossier.delete()
+        return Response({'detail': 'Dossier supprimé avec succès.'}, status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdmin])
+    def rejeter_suppression(self, request, pk=None):
+        """Admin rejette la demande de suppression"""
+        dossier = self.get_object()
+
+        if not dossier.demande_suppression:
+            return Response(
+                {'detail': 'Aucune demande de suppression pour ce dossier.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Réinitialiser la demande
+        dossier.demande_suppression = False
+        dossier.commentaire_suppression = ''
+        dossier.date_demande_suppression = None
+        dossier.save()
+
+        serializer = self.get_serializer(dossier)
+        return Response(serializer.data)
+
+
+class DocumentViewSet(viewsets.ModelViewSet):
+    """ViewSet pour gérer les documents"""
+    queryset = Document.objects.all()
+    serializer_class = DocumentSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
+    search_fields = ['nom', 'dossier__titre_memoire']
+    ordering_fields = ['uploaded_at', 'nom']
+    filterset_fields = ['type_piece', 'est_obligatoire', 'dossier']
+
+    def get_queryset(self):
+        """Filtrer selon le rôle"""
+        user = self.request.user
+        if user.role == 'ADMIN':
+            return Document.objects.all()
+        elif user.role == 'CANDIDAT':
+            return Document.objects.filter(dossier__candidat__user=user)
+        elif user.role == 'ENSEIGNANT':
+            return Document.objects.filter(dossier__encadreur__user=user)
+        return Document.objects.none()
 
 
 # ============================================================================
@@ -231,10 +324,10 @@ class DossierSoutenanceViewSet(viewsets.ModelViewSet):
 class JuryViewSet(viewsets.ModelViewSet):
     """ViewSet pour gérer les jurys"""
     queryset = Jury.objects.all()
-    permission_classes = [IsAuthenticated, CanManageJury]
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
-    search_fields = ['nom', 'president__user__last_name', 'rapporteur__user__last_name']
-    ordering_fields = ['created_at', 'date_validation']
+    search_fields = ['nom']
+    ordering_fields = ['created_at', 'nom']
     filterset_fields = ['statut', 'session']
 
     def get_serializer_class(self):
@@ -243,18 +336,9 @@ class JuryViewSet(viewsets.ModelViewSet):
             return JuryListSerializer
         return JurySerializer
 
-    def perform_create(self, serializer):
-        """Gérer la création d'un jury avec ses examinateurs"""
-        examinateurs_ids = self.request.data.get('examinateurs_ids', [])
-        jury = serializer.save()
-
-        if examinateurs_ids:
-            examinateurs = EnseignantProfile.objects.filter(id__in=examinateurs_ids)
-            jury.examinateurs.set(examinateurs)
-
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdmin])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanManageJury])
     def valider(self, request, pk=None):
-        """Valider la composition d'un jury"""
+        """Valider un jury (Admin seulement)"""
         jury = self.get_object()
         jury.statut = 'VALIDE'
         jury.date_validation = timezone.now()
@@ -262,6 +346,27 @@ class JuryViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(jury)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanManageJury])
+    def activer(self, request, pk=None):
+        """Activer un jury pour les soutenances (Admin seulement)"""
+        jury = self.get_object()
+        jury.statut = 'ACTIF'
+        jury.save()
+
+        serializer = self.get_serializer(jury)
+        return Response(serializer.data)
+
+
+class MembreJuryViewSet(viewsets.ModelViewSet):
+    """ViewSet pour gérer les membres de jury"""
+    queryset = MembreJury.objects.all()
+    serializer_class = MembreJurySerializer
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
+    search_fields = ['enseignant__user__first_name', 'enseignant__user__last_name', 'jury__nom']
+    ordering_fields = ['created_at', 'role']
+    filterset_fields = ['role', 'jury']
 
 
 # ============================================================================
@@ -271,11 +376,15 @@ class JuryViewSet(viewsets.ModelViewSet):
 class SoutenanceViewSet(viewsets.ModelViewSet):
     """ViewSet pour gérer les soutenances"""
     queryset = Soutenance.objects.all()
-    permission_classes = [IsAuthenticated, CanPlanSoutenance]
+    permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
-    search_fields = ['dossier__titre_memoire', 'dossier__candidat__user__last_name']
+    search_fields = [
+        'dossier__titre_memoire',
+        'dossier__candidat__user__first_name',
+        'dossier__candidat__user__last_name'
+    ]
     ordering_fields = ['date_heure', 'ordre_passage', 'created_at']
-    filterset_fields = ['statut', 'session', 'salle', 'mention']
+    filterset_fields = ['statut', 'salle']
 
     def get_serializer_class(self):
         """Utiliser un serializer différent pour la liste"""
@@ -292,134 +401,69 @@ class SoutenanceViewSet(viewsets.ModelViewSet):
             return Soutenance.objects.filter(dossier__candidat__user=user)
         elif user.role == 'ENSEIGNANT':
             # Enseignant voit les soutenances où il est membre du jury
-            enseignant_profile = user.enseignant_profile
             return Soutenance.objects.filter(
-                jury__president=enseignant_profile
-            ) | Soutenance.objects.filter(
-                jury__rapporteur=enseignant_profile
-            ) | Soutenance.objects.filter(
-                jury__examinateurs=enseignant_profile
-            )
+                jury__composition__enseignant__user=user
+            ).distinct()
         return Soutenance.objects.none()
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdmin])
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanPlanSoutenance])
     def planifier(self, request, pk=None):
-        """Planifier une soutenance (date, heure, salle)"""
+        """Planifier une soutenance (Admin seulement)"""
         soutenance = self.get_object()
 
-        date_heure = request.data.get('date_heure')
-        salle_id = request.data.get('salle_id')
-        ordre_passage = request.data.get('ordre_passage')
-
-        if date_heure:
-            soutenance.date_heure = date_heure
-        if salle_id:
-            soutenance.salle_id = salle_id
-        if ordre_passage:
-            soutenance.ordre_passage = ordre_passage
-
+        soutenance.date_heure = request.data.get('date_heure')
+        soutenance.salle_id = request.data.get('salle_id')
+        soutenance.ordre_passage = request.data.get('ordre_passage')
+        soutenance.duree_minutes = request.data.get('duree_minutes', 60)
         soutenance.statut = 'PLANIFIEE'
         soutenance.save()
-
-        # Créer des notifications pour le candidat
-        Notification.objects.create(
-            destinataire=soutenance.dossier.candidat.user,
-            type='CONVOCATION',
-            titre='Soutenance planifiée',
-            message=f'Votre soutenance a été planifiée le {soutenance.date_heure}.',
-            soutenance=soutenance
-        )
 
         serializer = self.get_serializer(soutenance)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['get'])
-    def mes_soutenances(self, request):
-        """Récupérer les soutenances de l'utilisateur connecté"""
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdmin])
+    def demarrer(self, request, pk=None):
+        """Démarrer une soutenance"""
+        soutenance = self.get_object()
+        soutenance.statut = 'EN_COURS'
+        soutenance.save()
+
+        serializer = self.get_serializer(soutenance)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['get'])
-    def planning(self, request):
-        """Récupérer le planning global des soutenances"""
-        if request.user.role != 'ADMIN':
-            return Response({'detail': 'Non autorisé'}, status=status.HTTP_403_FORBIDDEN)
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdmin])
+    def terminer(self, request, pk=None):
+        """Terminer une soutenance"""
+        soutenance = self.get_object()
+        soutenance.statut = 'TERMINEE'
+        soutenance.save()
 
-        soutenances = Soutenance.objects.filter(
-            statut__in=['PLANIFIEE', 'EN_COURS']
-        ).order_by('date_heure', 'ordre_passage')
+        serializer = self.get_serializer(soutenance)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def mes_soutenances(self, request):
+        """Récupérer les soutenances selon le rôle de l'utilisateur"""
+        user = request.user
+
+        if user.role == 'CANDIDAT':
+            soutenances = Soutenance.objects.filter(dossier__candidat__user=user)
+        elif user.role == 'ENSEIGNANT':
+            soutenances = Soutenance.objects.filter(
+                jury__composition__enseignant__user=user
+            ).distinct()
+        else:
+            soutenances = Soutenance.objects.all()
 
         serializer = self.get_serializer(soutenances, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'])
+    def calendrier(self, request):
+        """Calendrier des soutenances"""
+        soutenances = Soutenance.objects.filter(
+            date_heure__isnull=False
+        ).order_by('date_heure')
 
-# ============================================================================
-# VIEWSETS NOTIFICATIONS
-# ============================================================================
-
-class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
-    """ViewSet pour gérer les notifications (lecture seule)"""
-    serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated]
-    filter_backends = [filters.OrderingFilter, DjangoFilterBackend]
-    ordering_fields = ['date_envoi']
-    filterset_fields = ['type', 'est_lu']
-
-    def get_queryset(self):
-        """Récupérer uniquement les notifications de l'utilisateur connecté"""
-        return Notification.objects.filter(destinataire=self.request.user)
-
-    @action(detail=True, methods=['patch'])
-    def marquer_lu(self, request, pk=None):
-        """Marquer une notification comme lue"""
-        notification = self.get_object()
-        notification.est_lu = True
-        notification.save()
-
-        serializer = self.get_serializer(notification)
+        serializer = self.get_serializer(soutenances, many=True)
         return Response(serializer.data)
-
-    @action(detail=False, methods=['post'])
-    def marquer_tout_lu(self, request):
-        """Marquer toutes les notifications comme lues"""
-        Notification.objects.filter(
-            destinataire=request.user,
-            est_lu=False
-        ).update(est_lu=True)
-
-        return Response({'detail': 'Toutes les notifications ont été marquées comme lues'})
-
-
-# ============================================================================
-# VIEWSETS COMMENTAIRES
-# ============================================================================
-
-class CommentaireViewSet(viewsets.ModelViewSet):
-    """ViewSet pour gérer les commentaires"""
-    queryset = Commentaire.objects.all()
-    serializer_class = CommentaireSerializer
-    permission_classes = [IsAuthenticated]
-    filter_backends = [filters.OrderingFilter, DjangoFilterBackend]
-    ordering_fields = ['created_at']
-    filterset_fields = ['dossier', 'est_interne']
-
-    def get_queryset(self):
-        """Filtrer les commentaires selon le rôle"""
-        user = self.request.user
-        if user.role == 'ADMIN':
-            return Commentaire.objects.all()
-        elif user.role == 'CANDIDAT':
-            # Candidat voit seulement les commentaires non internes de ses dossiers
-            return Commentaire.objects.filter(
-                dossier__candidat__user=user,
-                est_interne=False
-            )
-        elif user.role == 'ENSEIGNANT':
-            # Enseignant voit tous les commentaires des dossiers qu'il encadre
-            return Commentaire.objects.filter(dossier__encadreur__user=user)
-        return Commentaire.objects.none()
-
-    def perform_create(self, serializer):
-        """Associer l'auteur automatiquement"""
-        serializer.save(auteur=self.request.user)

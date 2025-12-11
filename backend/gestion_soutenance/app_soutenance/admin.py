@@ -1,10 +1,9 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
-    CustomUser, CandidatProfile, EnseignantProfile,
-    SessionSoutenance, Salle, DossierSoutenance, FichierAnnexe,
-    Jury, Soutenance, Evaluation, ProcesVerbal,
-    Notification, Commentaire
+    CustomUser, Departement, CandidatProfile, EnseignantProfile,
+    SessionSoutenance, Salle, DossierSoutenance, Document,
+    Jury, MembreJury, Soutenance
 )
 
 
@@ -34,11 +33,26 @@ class CustomUserAdmin(BaseUserAdmin):
     )
 
 
+# ============================================================================
+# ADMIN DÉPARTEMENTS
+# ============================================================================
+
+@admin.register(Departement)
+class DepartementAdmin(admin.ModelAdmin):
+    list_display = ['code', 'nom']
+    search_fields = ['code', 'nom']
+    ordering = ['nom']
+
+
+# ============================================================================
+# ADMIN PROFILS
+# ============================================================================
+
 @admin.register(CandidatProfile)
 class CandidatProfileAdmin(admin.ModelAdmin):
-    list_display = ['matricule', 'get_full_name', 'niveau_etude', 'filiere', 'specialite', 'created_at']
-    list_filter = ['niveau_etude', 'filiere', 'created_at']
-    search_fields = ['matricule', 'user__first_name', 'user__last_name', 'user__email', 'filiere', 'specialite']
+    list_display = ['matricule', 'get_full_name', 'niveau_etude', 'departement', 'created_at']
+    list_filter = ['niveau_etude', 'departement', 'created_at']
+    search_fields = ['matricule', 'user__first_name', 'user__last_name', 'user__email', 'departement__nom']
     readonly_fields = ['created_at', 'updated_at']
 
     def get_full_name(self, obj):
@@ -48,14 +62,19 @@ class CandidatProfileAdmin(admin.ModelAdmin):
 
 @admin.register(EnseignantProfile)
 class EnseignantProfileAdmin(admin.ModelAdmin):
-    list_display = ['get_full_name', 'grade', 'departement', 'specialite', 'created_at']
-    list_filter = ['grade', 'departement', 'created_at']
-    search_fields = ['user__first_name', 'user__last_name', 'user__email', 'departement', 'specialite']
+    list_display = ['get_full_name', 'grade', 'get_departements', 'created_at']
+    list_filter = ['grade', 'departements', 'created_at']
+    search_fields = ['user__first_name', 'user__last_name', 'user__email', 'departements__nom']
     readonly_fields = ['created_at', 'updated_at']
+    filter_horizontal = ['departements']
 
     def get_full_name(self, obj):
         return obj.user.get_full_name()
     get_full_name.short_description = 'Nom complet'
+
+    def get_departements(self, obj):
+        return ", ".join([d.code for d in obj.departements.all()])
+    get_departements.short_description = 'Départements'
 
 
 # ============================================================================
@@ -83,9 +102,10 @@ class SalleAdmin(admin.ModelAdmin):
 # ADMIN DOSSIERS
 # ============================================================================
 
-class FichierAnnexeInline(admin.TabularInline):
-    model = FichierAnnexe
+class DocumentInline(admin.TabularInline):
+    model = Document
     extra = 1
+    readonly_fields = ['uploaded_at']
 
 
 @admin.register(DossierSoutenance)
@@ -94,7 +114,7 @@ class DossierSoutenanceAdmin(admin.ModelAdmin):
     list_filter = ['statut', 'session', 'date_depot', 'candidat__niveau_etude']
     search_fields = ['titre_memoire', 'theme', 'candidat__user__first_name', 'candidat__user__last_name', 'candidat__matricule']
     readonly_fields = ['date_depot', 'created_at', 'updated_at']
-    inlines = [FichierAnnexeInline]
+    inlines = [DocumentInline]
     date_hierarchy = 'date_depot'
 
     def get_candidat(self, obj):
@@ -102,103 +122,74 @@ class DossierSoutenanceAdmin(admin.ModelAdmin):
     get_candidat.short_description = 'Candidat'
 
 
-@admin.register(FichierAnnexe)
-class FichierAnnexeAdmin(admin.ModelAdmin):
-    list_display = ['nom', 'dossier', 'type_document', 'uploaded_at']
-    list_filter = ['type_document', 'uploaded_at']
-    search_fields = ['nom', 'dossier__titre_memoire']
+@admin.register(Document)
+class DocumentAdmin(admin.ModelAdmin):
+    list_display = ['nom', 'get_dossier', 'type_piece', 'est_obligatoire', 'uploaded_at']
+    list_filter = ['type_piece', 'est_obligatoire', 'uploaded_at']
+    search_fields = ['nom', 'dossier__titre_memoire', 'dossier__candidat__user__last_name']
     readonly_fields = ['uploaded_at']
+
+    def get_dossier(self, obj):
+        return f"{obj.dossier.candidat.user.get_full_name()} - {obj.dossier.titre_memoire[:30]}..."
+    get_dossier.short_description = 'Dossier'
 
 
 # ============================================================================
 # ADMIN JURYS
 # ============================================================================
 
+class MembreJuryInline(admin.TabularInline):
+    model = MembreJury
+    extra = 1
+    readonly_fields = ['created_at']
+    autocomplete_fields = ['enseignant']
+
+
 @admin.register(Jury)
 class JuryAdmin(admin.ModelAdmin):
-    list_display = ['nom', 'session', 'get_president', 'get_rapporteur', 'statut', 'created_at']
+    list_display = ['nom', 'session', 'get_nb_membres', 'statut', 'created_at']
     list_filter = ['statut', 'session', 'created_at']
-    search_fields = ['nom', 'president__user__last_name', 'rapporteur__user__last_name']
-    filter_horizontal = ['examinateurs']
+    search_fields = ['nom']
+    readonly_fields = ['created_at']
+    inlines = [MembreJuryInline]
+
+    def get_nb_membres(self, obj):
+        return obj.composition.count()
+    get_nb_membres.short_description = 'Nb membres'
+
+
+@admin.register(MembreJury)
+class MembreJuryAdmin(admin.ModelAdmin):
+    list_display = ['get_enseignant', 'jury', 'role', 'created_at']
+    list_filter = ['role', 'created_at']
+    search_fields = ['jury__nom', 'enseignant__user__first_name', 'enseignant__user__last_name']
     readonly_fields = ['created_at']
 
-    def get_president(self, obj):
-        return obj.president.user.get_full_name() if obj.president else '-'
-    get_president.short_description = 'Président'
-
-    def get_rapporteur(self, obj):
-        return obj.rapporteur.user.get_full_name() if obj.rapporteur else '-'
-    get_rapporteur.short_description = 'Rapporteur'
+    def get_enseignant(self, obj):
+        return obj.enseignant.user.get_full_name()
+    get_enseignant.short_description = 'Enseignant'
 
 
 # ============================================================================
 # ADMIN SOUTENANCES
 # ============================================================================
 
-class EvaluationInline(admin.TabularInline):
-    model = Evaluation
-    extra = 0
-    readonly_fields = ['date_evaluation', 'moyenne']
-
-
 @admin.register(Soutenance)
 class SoutenanceAdmin(admin.ModelAdmin):
-    list_display = ['get_candidat', 'session', 'date_heure', 'salle', 'statut', 'note_finale', 'mention']
-    list_filter = ['statut', 'session', 'date_heure', 'mention']
+    list_display = ['get_candidat', 'get_session', 'date_heure', 'salle', 'ordre_passage', 'statut']
+    list_filter = ['statut', 'date_heure']
     search_fields = [
         'dossier__candidat__user__first_name',
         'dossier__candidat__user__last_name',
         'dossier__titre_memoire'
     ]
-    readonly_fields = ['created_at', 'updated_at', 'pv_genere']
-    inlines = [EvaluationInline]
+    readonly_fields = ['created_at', 'updated_at']
     date_hierarchy = 'date_heure'
 
     def get_candidat(self, obj):
         return obj.dossier.candidat.user.get_full_name()
     get_candidat.short_description = 'Candidat'
 
-
-@admin.register(Evaluation)
-class EvaluationAdmin(admin.ModelAdmin):
-    list_display = ['soutenance', 'evaluateur', 'note_memoire', 'note_presentation', 'note_reponses', 'moyenne', 'date_evaluation']
-    list_filter = ['date_evaluation', 'evaluateur__grade']
-    search_fields = ['soutenance__dossier__candidat__user__last_name', 'evaluateur__user__last_name']
-    readonly_fields = ['date_evaluation', 'created_at', 'moyenne']
-
-
-# ============================================================================
-# ADMIN PROCES-VERBAUX
-# ============================================================================
-
-@admin.register(ProcesVerbal)
-class ProcesVerbalAdmin(admin.ModelAdmin):
-    list_display = ['numero_pv', 'get_candidat', 'est_valide', 'date_generation', 'date_validation']
-    list_filter = ['est_valide', 'date_generation', 'date_validation']
-    search_fields = ['numero_pv', 'soutenance__dossier__candidat__user__last_name']
-    readonly_fields = ['date_generation', 'created_at']
-
-    def get_candidat(self, obj):
-        return obj.soutenance.dossier.candidat.user.get_full_name()
-    get_candidat.short_description = 'Candidat'
-
-
-# ============================================================================
-# ADMIN NOTIFICATIONS ET COMMENTAIRES
-# ============================================================================
-
-@admin.register(Notification)
-class NotificationAdmin(admin.ModelAdmin):
-    list_display = ['destinataire', 'type', 'titre', 'est_lu', 'date_envoi']
-    list_filter = ['type', 'est_lu', 'date_envoi']
-    search_fields = ['destinataire__email', 'titre', 'message']
-    readonly_fields = ['date_envoi', 'created_at']
-    date_hierarchy = 'date_envoi'
-
-
-@admin.register(Commentaire)
-class CommentaireAdmin(admin.ModelAdmin):
-    list_display = ['auteur', 'dossier', 'est_interne', 'created_at']
-    list_filter = ['est_interne', 'created_at']
-    search_fields = ['auteur__email', 'contenu', 'dossier__titre_memoire']
-    readonly_fields = ['created_at']
+    def get_session(self, obj):
+        return obj.session.titre
+    get_session.short_description = 'Session'

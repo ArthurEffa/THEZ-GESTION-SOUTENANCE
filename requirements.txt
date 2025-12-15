@@ -5,7 +5,7 @@ django-cors-headers==4.3.0
 python-decouple==3.8
 
 # Authentication
-djangorestframework-simplejwt==5.3.1
+djangorestframework-simplejwt==5.5.1
 
 # Database
 psycopg2-binary==2.9.9

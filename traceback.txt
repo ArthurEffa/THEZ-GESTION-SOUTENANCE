@@ -1,0 +1,188 @@
+
+TypeError at /api/docs/
+
+'Meta.fields' must not contain non-model field names: candidat__niveau_etude
+
+Request Method: 	GET
+Request URL: 	http://127.0.0.1:8000/api/docs/?format=openapi
+Django Version: 	5.2.4
+Exception Type: 	TypeError
+Exception Value: 	
+
+'Meta.fields' must not contain non-model field names: candidat__niveau_etude
+
+Exception Location: 	C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\django_filters\filterset.py, line 367, in get_filters
+Raised during: 	drf_yasg.views.SchemaView
+Python Executable: 	C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\python.exe
+Python Version: 	3.12.6
+Python Path: 	
+
+['C:\\Users\\SUPRA STORES\\Desktop\\GESTION DES '
+ 'SOUTENANCES\\backend\\gestion_soutenance',
+ 'C:\\Users\\SUPRA '
+ 'STORES\\AppData\\Local\\Programs\\Python\\Python312\\python312.zip',
+ 'C:\\Users\\SUPRA STORES\\AppData\\Local\\Programs\\Python\\Python312\\DLLs',
+ 'C:\\Users\\SUPRA STORES\\AppData\\Local\\Programs\\Python\\Python312\\Lib',
+ 'C:\\Users\\SUPRA STORES\\AppData\\Local\\Programs\\Python\\Python312',
+ 'C:\\Users\\SUPRA '
+ 'STORES\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages',
+ 'C:\\Users\\SUPRA '
+ 'STORES\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\win32',
+ 'C:\\Users\\SUPRA '
+ 'STORES\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\win32\\lib',
+ 'C:\\Users\\SUPRA '
+ 'STORES\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\Pythonwin',
+ 'C:\\Users\\SUPRA '
+ 'STORES\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\setuptools\\_vendor']
+
+Server time: 	Tue, 16 Dec 2025 21:19:02 +0100
+Traceback Switch to copy-and-paste view
+
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\exception.py, line 55, in inner
+
+                        response = get_response(request)
+                                       ^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\core\handlers\base.py, line 197, in _get_response
+
+                        response = wrapped_callback(request, *callback_args, **callback_kwargs)
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\views\decorators\csrf.py, line 65, in _view_wrapper
+
+                    return view_func(request, *args, **kwargs)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\django\views\generic\base.py, line 105, in view
+
+                    return self.dispatch(request, *args, **kwargs)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py, line 515, in dispatch
+
+                    response = self.handle_exception(exc)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py, line 475, in handle_exception
+
+                    self.raise_uncaught_exception(exc)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py, line 486, in raise_uncaught_exception
+
+                raise exc
+                     ^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\rest_framework\views.py, line 512, in dispatch
+
+                    response = handler(request, *args, **kwargs)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\drf_yasg\views.py, line 96, in get
+
+                    schema = generator.get_schema(request, self.public)
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\drf_yasg\generators.py, line 276, in get_schema
+
+                paths, prefix = self.get_paths(endpoints, components, request, public)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\drf_yasg\generators.py, line 482, in get_paths
+
+                        operation = self.get_operation(view, path, prefix, method, components, request)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\drf_yasg\generators.py, line 524, in get_operation
+
+                operation = view_inspector.get_operation(operation_keys)
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\drf_yasg\inspectors\view.py, line 33, in get_operation
+
+                query = self.get_query_parameters()
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\drf_yasg\inspectors\view.py, line 293, in get_query_parameters
+
+                natural_parameters = self.get_filter_parameters() + self.get_pagination_parameters()
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\drf_yasg\inspectors\base.py, line 409, in get_filter_parameters
+
+                    fields += self.probe_inspectors(self.filter_inspectors, 'get_filter_parameters', filter_backend()) or []
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\drf_yasg\inspectors\base.py, line 110, in probe_inspectors
+
+                    result = method(obj, **kwargs)
+                                  ^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\drf_yasg\inspectors\query.py, line 42, in get_filter_parameters
+
+                    return list(map(self.param_to_schema, filter_backend.get_schema_operation_parameters(self.view)))
+                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\django_filters\rest_framework\backends.py, line 146, in get_schema_operation_parameters
+
+                filterset_class = self.get_filterset_class(view, queryset)
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\django_filters\rest_framework\backends.py, line 51, in get_filterset_class
+
+                    class AutoFilterSet(self.filterset_base):
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\django_filters\filterset.py, line 78, in __new__
+
+                new_class.base_filters = new_class.get_filters()
+                                             ^^^^^^^^^^^^^^^^^^^^^^^
+
+         …
+    Local vars
+    C:\Users\SUPRA STORES\AppData\Local\Programs\Python\Python312\Lib\site-packages\django_filters\filterset.py, line 367, in get_filters
+
+                    raise TypeError(
+                         ^
+
+         …
+    Local vars
+    

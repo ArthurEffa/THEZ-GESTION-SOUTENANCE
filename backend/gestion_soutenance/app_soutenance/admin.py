@@ -50,8 +50,8 @@ class DepartementAdmin(admin.ModelAdmin):
 
 @admin.register(CandidatProfile)
 class CandidatProfileAdmin(admin.ModelAdmin):
-    list_display = ['matricule', 'get_full_name', 'niveau_etude', 'departement', 'created_at']
-    list_filter = ['niveau_etude', 'departement', 'created_at']
+    list_display = ['matricule', 'get_full_name', 'cycle', 'departement', 'created_at']
+    list_filter = ['cycle', 'departement', 'created_at']
     search_fields = ['matricule', 'user__first_name', 'user__last_name', 'user__email', 'departement__nom']
     readonly_fields = ['created_at', 'updated_at']
 
@@ -111,7 +111,7 @@ class DocumentInline(admin.TabularInline):
 @admin.register(DossierSoutenance)
 class DossierSoutenanceAdmin(admin.ModelAdmin):
     list_display = ['get_candidat', 'titre_memoire', 'session', 'statut', 'date_depot', 'date_validation']
-    list_filter = ['statut', 'session', 'date_depot', 'candidat__niveau_etude']
+    list_filter = ['statut', 'session', 'date_depot', 'candidat__cycle']
     search_fields = ['titre_memoire', 'theme', 'candidat__user__first_name', 'candidat__user__last_name', 'candidat__matricule']
     readonly_fields = ['date_depot', 'created_at', 'updated_at']
     inlines = [DocumentInline]

@@ -93,10 +93,14 @@ class CandidatProfileViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['matricule', 'user__first_name', 'user__last_name', 'user__email']
     ordering_fields = ['created_at', 'matricule']
-    filterset_fields = ['niveau_etude', 'departement']
+    filterset_fields = ['cycle', 'departement']
 
     def get_queryset(self):
         """Filtrer selon le rôle"""
+        # Court-circuiter pour la génération du schéma Swagger
+        if getattr(self, 'swagger_fake_view', False):
+            return CandidatProfile.objects.none()
+
         user = self.request.user
         if user.role == 'ADMIN':
             return CandidatProfile.objects.all()
@@ -214,6 +218,10 @@ class DossierSoutenanceViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Filtrer selon le rôle"""
+        # Court-circuiter pour la génération du schéma Swagger
+        if getattr(self, 'swagger_fake_view', False):
+            return DossierSoutenance.objects.none()
+
         user = self.request.user
         if user.role == 'ADMIN':
             return DossierSoutenance.objects.all()
@@ -327,6 +335,10 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Filtrer selon le rôle"""
+        # Court-circuiter pour la génération du schéma Swagger
+        if getattr(self, 'swagger_fake_view', False):
+            return Document.objects.none()
+
         user = self.request.user
         if user.role == 'ADMIN':
             return Document.objects.all()
@@ -414,6 +426,10 @@ class SoutenanceViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Filtrer selon le rôle"""
+        # Court-circuiter pour la génération du schéma Swagger
+        if getattr(self, 'swagger_fake_view', False):
+            return Soutenance.objects.none()
+
         user = self.request.user
         if user.role == 'ADMIN':
             return Soutenance.objects.all()

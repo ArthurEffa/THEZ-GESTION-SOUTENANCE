@@ -80,10 +80,10 @@ class CandidatProfile(models.Model):
     """
     Profil étendu pour les candidats
     """
-    class NiveauEtude(models.TextChoices):
-        LICENCE = 'LICENCE', 'Licence'
-        MASTER = 'MASTER', 'Master'
-        DOCTORAT = 'DOCTORAT', 'Doctorat'
+    class Cycle(models.TextChoices):
+        INGENIEUR = 'INGENIEUR', 'Ingénieur'
+        SCIENCE_INGENIEUR = 'SCIENCE_INGENIEUR', 'Science de l\'ingénieur'
+        MASTER_PRO = 'MASTER_PRO', 'Master professionnel'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(
@@ -93,10 +93,11 @@ class CandidatProfile(models.Model):
         verbose_name="Utilisateur"
     )
     matricule = models.CharField(max_length=50, unique=True, verbose_name="Matricule")
-    niveau_etude = models.CharField(
-        max_length=20,
-        choices=NiveauEtude.choices,
-        verbose_name="Niveau d'étude"
+    cycle = models.CharField(
+        max_length=30,
+        choices=Cycle.choices,
+        default='INGENIEUR',
+        verbose_name="Cycle"
     )
     departement = models.ForeignKey(
         'Departement',

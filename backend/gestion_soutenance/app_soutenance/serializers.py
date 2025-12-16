@@ -158,7 +158,7 @@ class CandidatProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CandidatProfile
-        fields = ['id', 'user', 'user_email', 'matricule', 'niveau_etude', 'departement', 'departement_id', 'photo', 'created_at', 'updated_at']
+        fields = ['id', 'user', 'user_email', 'matricule', 'cycle', 'departement', 'departement_id', 'photo', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 

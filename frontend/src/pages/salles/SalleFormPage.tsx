@@ -1,30 +1,67 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save, Plus, X } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import ajoutSalleHeroImg from "@/assets/illustrations/ajout-salle-hero.png";
+import salleService, { SalleFormData } from "@/services/salleService";
 
 export default function SalleFormPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { id } = useParams();
   const isEditing = Boolean(id);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<SalleFormData & { capacite: string }>({
     nom: "",
     batiment: "",
     capacite: "",
-    equipements: [] as string[],
     est_disponible: true,
   });
-  const [newEquipement, setNewEquipement] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Charger les données de la salle en mode édition
+  const { data: salle, isLoading: isLoadingSalle } = useQuery({
+    queryKey: ['salle', id],
+    queryFn: () => salleService.getById(id!),
+    enabled: isEditing && !!id,
+  });
+
+  // Remplir le formulaire avec les données chargées
+  useEffect(() => {
+    if (salle) {
+      setFormData({
+        nom: salle.nom,
+        batiment: salle.batiment,
+        capacite: salle.capacite.toString(),
+        est_disponible: salle.est_disponible,
+      });
+    }
+  }, [salle]);
+
+  // Mutation pour créer/modifier
+  const saveMutation = useMutation({
+    mutationFn: (data: SalleFormData) => {
+      if (isEditing && id) {
+        return salleService.update(id, data);
+      }
+      return salleService.create(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['salles'] });
+      toast.success(isEditing ? "Salle modifiée avec succès" : "Salle créée avec succès");
+      navigate("/salles");
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.message || "Erreur lors de l'enregistrement";
+      toast.error(errorMessage);
+    },
+  });
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -41,34 +78,27 @@ export default function SalleFormPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleAddEquipement = () => {
-    if (newEquipement.trim() && !formData.equipements.includes(newEquipement.trim())) {
-      setFormData({
-        ...formData,
-        equipements: [...formData.equipements, newEquipement.trim()],
-      });
-      setNewEquipement("");
-    }
-  };
-
-  const handleRemoveEquipement = (equipement: string) => {
-    setFormData({
-      ...formData,
-      equipements: formData.equipements.filter((e) => e !== equipement),
-    });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setIsLoading(false);
+    const dataToSend: SalleFormData = {
+      nom: formData.nom,
+      batiment: formData.batiment,
+      capacite: parseInt(formData.capacite),
+      est_disponible: formData.est_disponible,
+    };
 
-    toast.success(isEditing ? "Salle modifiée avec succès" : "Salle créée avec succès");
-    navigate("/salles");
+    saveMutation.mutate(dataToSend);
   };
+
+  if (isLoadingSalle) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -101,7 +131,7 @@ export default function SalleFormPage() {
                 </Label>
                 <Input
                   id="nom"
-                  placeholder="A101"
+                  placeholder="17BS1..."
                   value={formData.nom}
                   onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
                   className={errors.nom ? "border-destructive" : ""}
@@ -117,7 +147,7 @@ export default function SalleFormPage() {
                 </Label>
                 <Input
                   id="batiment"
-                  placeholder="Bâtiment A"
+                  placeholder="BS (Bâtiment Scolaire)"
                   value={formData.batiment}
                   onChange={(e) => setFormData({ ...formData, batiment: e.target.value })}
                   className={errors.batiment ? "border-destructive" : ""}
@@ -149,42 +179,6 @@ export default function SalleFormPage() {
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label>Équipements</Label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Vidéoprojecteur, Tableau blanc..."
-                  value={newEquipement}
-                  onChange={(e) => setNewEquipement(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddEquipement();
-                    }
-                  }}
-                />
-                <Button type="button" variant="outline" size="icon" onClick={handleAddEquipement}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              {formData.equipements.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {formData.equipements.map((equipement) => (
-                    <Badge key={equipement} variant="secondary" className="gap-1">
-                      {equipement}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveEquipement(equipement)}
-                        className="ml-1 hover:text-destructive"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="est_disponible"
@@ -202,9 +196,18 @@ export default function SalleFormPage() {
               <Button type="button" variant="outline" onClick={() => navigate("/salles")}>
                 Annuler
               </Button>
-              <Button type="submit" disabled={isLoading}>
-                <Save className="mr-2 h-4 w-4" />
-                {isLoading ? "Enregistrement..." : "Enregistrer"}
+              <Button type="submit" disabled={saveMutation.isPending}>
+                {saveMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enregistrement...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Enregistrer
+                  </>
+                )}
               </Button>
             </div>
           </form>
@@ -232,8 +235,8 @@ export default function SalleFormPage() {
           <CardContent className="text-sm text-muted-foreground">
             <p>
               {isEditing
-                ? "Modifiez les informations de la salle. Vous pouvez mettre à jour sa capacité, ses équipements et sa disponibilité."
-                : "Ajoutez une nouvelle salle pour les soutenances. Renseignez sa capacité, ses équipements et sa disponibilité."
+                ? "Modifiez les informations de la salle. Vous pouvez mettre à jour son nom, son bâtiment, sa capacité et sa disponibilité."
+                : "Ajoutez une nouvelle salle pour les soutenances. Renseignez son nom, son bâtiment, sa capacité et sa disponibilité."
               }
             </p>
           </CardContent>

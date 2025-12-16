@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2, Check, X } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Building2, Check, X, Loader2 } from "lucide-react";
 import sallesHeroImage from "@/assets/illustrations/salles-hero.png";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, Column } from "@/components/common/DataTable";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -14,40 +16,39 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-
-interface Salle {
-  id: string;
-  nom: string;
-  batiment: string;
-  capacite: number;
-  equipements: string;
-  disponible: boolean;
-}
-
-// Demo data
-const demoSalles: Salle[] = [
-  { id: "1", nom: "A101", batiment: "Bâtiment A", capacite: 50, equipements: "Vidéoprojecteur, Tableau blanc", disponible: true },
-  { id: "2", nom: "A102", batiment: "Bâtiment A", capacite: 30, equipements: "Vidéoprojecteur", disponible: true },
-  { id: "3", nom: "B204", batiment: "Bâtiment B", capacite: 40, equipements: "Vidéoprojecteur, Système audio", disponible: false },
-  { id: "4", nom: "B205", batiment: "Bâtiment B", capacite: 35, equipements: "Tableau interactif", disponible: true },
-  { id: "5", nom: "C302", batiment: "Bâtiment C", capacite: 60, equipements: "Vidéoprojecteur, Système visioconférence", disponible: true },
-  { id: "6", nom: "C303", batiment: "Bâtiment C", capacite: 25, equipements: "Vidéoprojecteur", disponible: false },
-  { id: "7", nom: "D401", batiment: "Bâtiment D", capacite: 80, equipements: "Amphithéâtre équipé", disponible: true },
-  { id: "8", nom: "D402", batiment: "Bâtiment D", capacite: 45, equipements: "Vidéoprojecteur, Climatisation", disponible: true },
-];
+import salleService, { Salle } from "@/services/salleService";
 
 export default function SallesPage() {
   const navigate = useNavigate();
-  const [salles, setSalles] = useState<Salle[]>(demoSalles);
+  const queryClient = useQueryClient();
   const [filterDisponible, setFilterDisponible] = useState<string>("all");
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; salle: Salle | null }>({
     open: false,
     salle: null,
   });
 
+  // Récupération des salles depuis l'API
+  const { data: salles = [], isLoading, error } = useQuery({
+    queryKey: ['salles'],
+    queryFn: () => salleService.getAll(),
+  });
+
+  // Mutation pour la suppression
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => salleService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['salles'] });
+      toast.success(`Salle supprimée avec succès`);
+      setDeleteDialog({ open: false, salle: null });
+    },
+    onError: () => {
+      toast.error("Erreur lors de la suppression de la salle");
+    },
+  });
+
   const filteredSalles = salles.filter((salle) => {
     if (filterDisponible === "all") return true;
-    return filterDisponible === "disponible" ? salle.disponible : !salle.disponible;
+    return filterDisponible === "disponible" ? salle.est_disponible : !salle.est_disponible;
   });
 
   const columns: Column<Salle>[] = [
@@ -59,6 +60,9 @@ export default function SallesPage() {
     {
       key: "batiment",
       header: "Bâtiment",
+      render: (salle) => (
+        <span className="text-muted-foreground">{salle.batiment}</span>
+      ),
     },
     {
       key: "capacite",
@@ -68,20 +72,11 @@ export default function SallesPage() {
       ),
     },
     {
-      key: "equipements",
-      header: "Équipements",
-      render: (salle) => (
-        <span className="text-sm text-muted-foreground truncate max-w-[200px] block">
-          {salle.equipements}
-        </span>
-      ),
-    },
-    {
-      key: "disponible",
+      key: "est_disponible",
       header: "Disponibilité",
       render: (salle) => (
-        <Badge variant={salle.disponible ? "default" : "secondary"} className="gap-1">
-          {salle.disponible ? (
+        <Badge variant={salle.est_disponible ? "default" : "secondary"} className="gap-1">
+          {salle.est_disponible ? (
             <>
               <Check className="h-3 w-3" /> Disponible
             </>
@@ -97,11 +92,28 @@ export default function SallesPage() {
 
   const handleDelete = () => {
     if (deleteDialog.salle) {
-      setSalles((prev) => prev.filter((s) => s.id !== deleteDialog.salle?.id));
-      toast.success(`Salle "${deleteDialog.salle.nom}" supprimée`);
-      setDeleteDialog({ open: false, salle: null });
+      deleteMutation.mutate(deleteDialog.salle.id);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <p className="text-destructive">Erreur lors du chargement des salles</p>
+        <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['salles'] })}>
+          Réessayer
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

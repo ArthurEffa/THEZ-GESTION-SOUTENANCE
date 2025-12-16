@@ -1,6 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import Dashboard from "./Dashboard";
-import EtudiantDashboard from "./etudiant/EtudiantDashboard";
+import CandidatDashboard from "./candidat/CandidatDashboard";
 import EnseignantDashboard from "./enseignant/EnseignantDashboard";
 
 /**
@@ -13,7 +13,7 @@ export default function DashboardRouter() {
     case "ADMIN":
       return <Dashboard />;
     case "CANDIDAT":
-      return <EtudiantDashboard />;
+      return <CandidatDashboard />;
     case "ENSEIGNANT":
       return <EnseignantDashboard />;
     default:

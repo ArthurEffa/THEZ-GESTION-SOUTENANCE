@@ -16,7 +16,7 @@ import {
 
 type DossierStatus = "brouillon" | "soumis" | "valide";
 
-export default function EtudiantDashboard() {
+export default function CandidatDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 

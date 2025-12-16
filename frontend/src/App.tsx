@@ -27,12 +27,12 @@ import SoutenancesPage from "@/pages/soutenances/SoutenancesPage";
 import SoutenanceFormPage from "@/pages/soutenances/SoutenanceFormPage";
 import SoutenanceDetailPage from "@/pages/soutenances/SoutenanceDetailPage";
 
-// Pages Étudiant
-import MonDossierPage from "@/pages/etudiant/MonDossierPage";
-import MaSoutenancePage from "@/pages/etudiant/MaSoutenancePage";
+// Pages Candidat
+import MonDossierPage from "@/pages/candidat/MonDossierPage";
+import MaSoutenancePage from "@/pages/candidat/MaSoutenancePage";
 
 // Pages Enseignant (Jury / Encadreur)
-import MesEtudiantsPage from "@/pages/enseignant/MesEtudiantsPage";
+import MesCandidatsPage from "@/pages/enseignant/MesCandidatsPage";
 import MesSoutenancesPage from "@/pages/enseignant/MesSoutenancesPage";
 import MemoiresPage from "@/pages/enseignant/MemoiresPage";
 
@@ -203,9 +203,9 @@ function AppRoutes() {
         } />
 
         {/* === ROUTES ENSEIGNANT === */}
-        <Route path="/mes-etudiants" element={
+        <Route path="/mes-candidats" element={
           <ProtectedRoute allowedRoles={["ENSEIGNANT"]}>
-            <MesEtudiantsPage />
+            <MesCandidatsPage />
           </ProtectedRoute>
         } />
         <Route path="/mes-soutenances" element={

@@ -1,25 +1,61 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import departementService, { DepartementFormData } from "@/services/departementService";
 
 export default function DepartementFormPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { id } = useParams();
   const isEditing = Boolean(id);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<DepartementFormData>({
     code: "",
     nom: "",
-    description: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Charger les données du département en mode édition
+  const { data: departement, isLoading: isLoadingDept } = useQuery({
+    queryKey: ['departement', id],
+    queryFn: () => departementService.getById(id!),
+    enabled: isEditing && !!id,
+  });
+
+  // Remplir le formulaire avec les données chargées
+  useEffect(() => {
+    if (departement) {
+      setFormData({
+        code: departement.code,
+        nom: departement.nom,
+      });
+    }
+  }, [departement]);
+
+  // Mutation pour créer/modifier
+  const saveMutation = useMutation({
+    mutationFn: (data: DepartementFormData) => {
+      if (isEditing && id) {
+        return departementService.update(id, data);
+      }
+      return departementService.create(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departements'] });
+      toast.success(isEditing ? "Département modifié avec succès" : "Département créé avec succès");
+      navigate("/departements");
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.message || "Erreur lors de l'enregistrement";
+      toast.error(errorMessage);
+    },
+  });
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -38,15 +74,16 @@ export default function DepartementFormPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setIsLoading(false);
-
-    toast.success(isEditing ? "Département modifié avec succès" : "Département créé avec succès");
-    navigate("/departements");
+    saveMutation.mutate(formData);
   };
+
+  if (isLoadingDept) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -105,24 +142,22 @@ export default function DepartementFormPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                placeholder="Description du département..."
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={4}
-              />
-            </div>
-
             <div className="flex justify-end gap-3">
               <Button type="button" variant="outline" onClick={() => navigate("/departements")}>
                 Annuler
               </Button>
-              <Button type="submit" disabled={isLoading}>
-                <Save className="mr-2 h-4 w-4" />
-                {isLoading ? "Enregistrement..." : "Enregistrer"}
+              <Button type="submit" disabled={saveMutation.isPending}>
+                {saveMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enregistrement...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Enregistrer
+                  </>
+                )}
               </Button>
             </div>
           </form>

@@ -1,30 +1,41 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { DEPARTMENTS, Department } from "@/config/departments";
 import departmentsHeroImage from "@/assets/illustrations/departments-hero.png";
-
-interface Departement extends Department {
-  nombreEtudiants: number;
-}
-
-// Données de démo basées sur les départements centralisés
-const demoDepartements: Departement[] = DEPARTMENTS.map((dept, index) => ({
-  ...dept,
-  nombreEtudiants: [48, 35, 28, 32, 22, 25, 30, 38, 20, 42, 55][index] || 30,
-}));
+import departementService, { Departement } from "@/services/departementService";
+import { Loader2 } from "lucide-react";
 
 export default function DepartementsPage() {
   const navigate = useNavigate();
-  const [departements, setDepartements] = useState<Departement[]>(demoDepartements);
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; departement: Departement | null }>({
     open: false,
     departement: null,
+  });
+
+  // Récupération des départements depuis l'API
+  const { data: departements = [], isLoading, error } = useQuery({
+    queryKey: ['departements'],
+    queryFn: () => departementService.getAll(),
+  });
+
+  // Mutation pour la suppression
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => departementService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departements'] });
+      toast.success(`Département supprimé avec succès`);
+      setDeleteDialog({ open: false, departement: null });
+    },
+    onError: () => {
+      toast.error("Erreur lors de la suppression du département");
+    },
   });
 
   const filteredDepartements = departements.filter(
@@ -35,11 +46,28 @@ export default function DepartementsPage() {
 
   const handleDelete = () => {
     if (deleteDialog.departement) {
-      setDepartements((prev) => prev.filter((f) => f.id !== deleteDialog.departement?.id));
-      toast.success(`Département "${deleteDialog.departement.nom}" supprimé`);
-      setDeleteDialog({ open: false, departement: null });
+      deleteMutation.mutate(deleteDialog.departement.id);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <p className="text-destructive">Erreur lors du chargement des départements</p>
+        <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['departements'] })}>
+          Réessayer
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -110,14 +138,11 @@ export default function DepartementsPage() {
                   </div>
                 </div>
 
-                <p className="text-xs text-muted-foreground line-clamp-2">
-                  {departement.description}
-                </p>
-
                 <div className="flex items-center justify-between pt-2 border-t border-border/40">
-                  <span className="text-xs text-muted-foreground">
-                    {departement.nombreEtudiants} étudiants
-                  </span>
+                  <div className="flex gap-3 text-xs text-muted-foreground">
+                    <span>{departement.nb_candidats} candidats</span>
+                    <span>{departement.nb_enseignants} enseignants</span>
+                  </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="ghost"

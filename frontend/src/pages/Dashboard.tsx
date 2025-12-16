@@ -21,7 +21,7 @@ const upcomingSoutenances = [
     id: "1",
     date: "15 Déc 2024",
     heure: "09:00",
-    etudiant: "Marie Martin",
+    candidat: "Marie Martin",
     departement: "Informatique",
     salle: "A101",
     status: "PLANIFIEE" as SoutenanceStatus,
@@ -30,7 +30,7 @@ const upcomingSoutenances = [
     id: "2",
     date: "15 Déc 2024",
     heure: "10:30",
-    etudiant: "Paul Dubois",
+    candidat: "Paul Dubois",
     departement: "Génie Civil",
     salle: "B204",
     status: "PLANIFIEE" as SoutenanceStatus,
@@ -39,7 +39,7 @@ const upcomingSoutenances = [
     id: "3",
     date: "15 Déc 2024",
     heure: "14:00",
-    etudiant: "Sophie Lefebvre",
+    candidat: "Sophie Lefebvre",
     departement: "Informatique",
     salle: "A101",
     status: "PLANIFIEE" as SoutenanceStatus,
@@ -48,7 +48,7 @@ const upcomingSoutenances = [
     id: "4",
     date: "16 Déc 2024",
     heure: "09:00",
-    etudiant: "Lucas Bernard",
+    candidat: "Lucas Bernard",
     departement: "Électronique",
     salle: "C302",
     status: "PLANIFIEE" as SoutenanceStatus,
@@ -57,7 +57,7 @@ const upcomingSoutenances = [
     id: "5",
     date: "16 Déc 2024",
     heure: "11:00",
-    etudiant: "Emma Petit",
+    candidat: "Emma Petit",
     departement: "Mécanique",
     salle: "A101",
     status: "PLANIFIEE" as SoutenanceStatus,
@@ -99,7 +99,7 @@ export default function Dashboard() {
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Étudiants"
+          title="Candidats"
           value="124"
           subtitle="En fin d'études"
           icon={Users}
@@ -178,16 +178,16 @@ export default function Dashboard() {
           </CardContent>
         </Card>
         
-        <Card 
+        <Card
           className="card-hover cursor-pointer group"
-          onClick={() => navigate("/etudiants")}
+          onClick={() => navigate("/candidats")}
         >
           <CardContent className="p-4 flex items-center gap-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10 group-hover:bg-warning group-hover:text-warning-foreground transition-colors">
               <Users className="h-5 w-5" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium">Étudiants</p>
+              <p className="text-sm font-medium">Candidats</p>
               <p className="text-xs text-muted-foreground">124 inscrits</p>
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-warning transition-colors" />
@@ -230,7 +230,7 @@ export default function Dashboard() {
                       </span>
                     </div>
                     <div>
-                      <p className="font-medium">{soutenance.etudiant}</p>
+                      <p className="font-medium">{soutenance.candidat}</p>
                       <p className="text-sm text-muted-foreground">
                         {soutenance.heure} • {soutenance.salle} • {soutenance.departement}
                       </p>

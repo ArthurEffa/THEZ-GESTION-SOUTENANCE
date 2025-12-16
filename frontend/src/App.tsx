@@ -19,8 +19,8 @@ import SallesPage from "@/pages/salles/SallesPage";
 import SalleFormPage from "@/pages/salles/SalleFormPage";
 import JurysPage from "@/pages/jurys/JurysPage";
 import JuryFormPage from "@/pages/jurys/JuryFormPage";
-import EtudiantsPage from "@/pages/etudiants/EtudiantsPage";
-import EtudiantFormPage from "@/pages/etudiants/EtudiantFormPage";
+import CandidatsPage from "@/pages/candidats/CandidatsPage";
+import CandidatFormPage from "@/pages/candidats/CandidatFormPage";
 import EnseignantFormPage from "@/pages/enseignants/EnseignantFormPage";
 import SessionFormPage from "@/pages/sessions/SessionFormPage";
 import SoutenancesPage from "@/pages/soutenances/SoutenancesPage";
@@ -124,24 +124,24 @@ function AppRoutes() {
           </ProtectedRoute>
         } />
 
-        <Route path="/etudiants" element={
+        <Route path="/candidats" element={
           <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <EtudiantsPage />
+            <CandidatsPage />
           </ProtectedRoute>
         } />
-        <Route path="/etudiants/nouveau" element={
+        <Route path="/candidats/nouveau" element={
           <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <EtudiantFormPage />
+            <CandidatFormPage />
           </ProtectedRoute>
         } />
-        <Route path="/etudiants/:id" element={
+        <Route path="/candidats/:id" element={
           <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <EtudiantFormPage />
+            <CandidatFormPage />
           </ProtectedRoute>
         } />
-        <Route path="/etudiants/:id/modifier" element={
+        <Route path="/candidats/:id/modifier" element={
           <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <EtudiantFormPage />
+            <CandidatFormPage />
           </ProtectedRoute>
         } />
 

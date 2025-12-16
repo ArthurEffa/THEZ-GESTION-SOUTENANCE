@@ -48,8 +48,8 @@ export const navigationItems: NavigationItem[] = [
     roles: ["ADMIN"],
   },
   {
-    title: "Étudiants",
-    url: "/etudiants",
+    title: "Candidats",
+    url: "/candidats",
     icon: Users,
     roles: ["ADMIN"],
   },
@@ -76,8 +76,8 @@ export const navigationItems: NavigationItem[] = [
 
   // === ENSEIGNANT ===
   {
-    title: "Mes étudiants",
-    url: "/mes-etudiants",
+    title: "Mes candidats",
+    url: "/mes-candidats",
     icon: Users,
     roles: ["ENSEIGNANT"],
   },

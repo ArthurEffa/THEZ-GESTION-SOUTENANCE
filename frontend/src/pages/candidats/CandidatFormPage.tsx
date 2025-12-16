@@ -16,11 +16,11 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { DEPARTMENTS } from "@/config/departments";
 import { NiveauEtude, NIVEAU_ETUDE_LABELS } from "@/types/models";
-import ajoutEtudiantHeroImg from "@/assets/illustrations/ajout-etudiant-hero.png";
+import ajoutCandidatHeroImg from "@/assets/illustrations/ajout-etudiant-hero.png";
 
 const NIVEAUX_ETUDE: NiveauEtude[] = ['LICENCE', 'MASTER', 'DOCTORAT'];
 
-export default function EtudiantFormPage() {
+export default function CandidatFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = Boolean(id);
@@ -86,13 +86,13 @@ export default function EtudiantFormPage() {
     setIsLoading(false);
 
     toast.success(isEditing ? "Candidat modifié avec succès" : "Candidat créé avec succès");
-    navigate("/etudiants");
+    navigate("/candidats");
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/etudiants")}>
+        <Button variant="ghost" size="icon" onClick={() => navigate("/candidats")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
@@ -308,7 +308,7 @@ export default function EtudiantFormPage() {
             </div>
 
             <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={() => navigate("/etudiants")}>
+              <Button type="button" variant="outline" onClick={() => navigate("/candidats")}>
                 Annuler
               </Button>
               <Button type="submit" disabled={isLoading}>
@@ -326,7 +326,7 @@ export default function EtudiantFormPage() {
           <CardContent className="p-4 flex items-center justify-center">
             <div className="w-full h-48 overflow-hidden">
               <img
-                src={ajoutEtudiantHeroImg}
+                src={ajoutCandidatHeroImg}
                 alt="Ajout d'un candidat"
                 className="w-full h-full object-contain"
               />

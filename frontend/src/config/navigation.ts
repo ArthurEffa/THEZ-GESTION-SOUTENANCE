@@ -25,7 +25,7 @@ export const navigationItems: NavigationItem[] = [
     title: "Tableau de bord",
     url: "/",
     icon: LayoutDashboard,
-    roles: ["admin", "etudiant", "jury", "encadreur"],
+    roles: ["ADMIN", "CANDIDAT", "ENSEIGNANT"],
   },
 
   // === ADMIN UNIQUEMENT ===
@@ -33,65 +33,65 @@ export const navigationItems: NavigationItem[] = [
     title: "Filières",
     url: "/filieres",
     icon: GraduationCap,
-    roles: ["admin"],
+    roles: ["ADMIN"],
   },
   {
     title: "Salles",
     url: "/salles",
     icon: Building2,
-    roles: ["admin"],
+    roles: ["ADMIN"],
   },
   {
     title: "Jurys",
     url: "/jurys",
     icon: UserCheck,
-    roles: ["admin"],
+    roles: ["ADMIN"],
   },
   {
     title: "Étudiants",
     url: "/etudiants",
     icon: Users,
-    roles: ["admin"],
+    roles: ["ADMIN"],
   },
   {
     title: "Soutenances",
     url: "/soutenances",
     icon: Calendar,
-    roles: ["admin"],
+    roles: ["ADMIN"],
   },
 
-  // === ÉTUDIANT ===
+  // === CANDIDAT ===
   {
     title: "Mon dossier",
     url: "/mon-dossier",
     icon: FolderOpen,
-    roles: ["etudiant"],
+    roles: ["CANDIDAT"],
   },
   {
     title: "Ma soutenance",
     url: "/ma-soutenance",
     icon: ClipboardList,
-    roles: ["etudiant"],
+    roles: ["CANDIDAT"],
   },
 
-  // === JURY / ENCADREUR ===
+  // === ENSEIGNANT ===
   {
     title: "Mes étudiants",
     url: "/mes-etudiants",
     icon: Users,
-    roles: ["jury", "encadreur"],
+    roles: ["ENSEIGNANT"],
   },
   {
     title: "Mes soutenances",
     url: "/mes-soutenances",
     icon: Calendar,
-    roles: ["jury", "encadreur"],
+    roles: ["ENSEIGNANT"],
   },
   {
     title: "Mémoires",
     url: "/memoires",
     icon: FileText,
-    roles: ["jury", "encadreur"],
+    roles: ["ENSEIGNANT"],
   },
 ];
 

@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import ajoutSalleHeroImg from "@/assets/illustrations/ajout-salle-hero.png";
 
 export default function SalleFormPage() {
   const navigate = useNavigate();
@@ -85,13 +86,14 @@ export default function SalleFormPage() {
         </div>
       </div>
 
-      <Card className="max-w-2xl">
-        <CardHeader>
-          <CardTitle>Informations de la salle</CardTitle>
-          <CardDescription>Renseignez les détails de la salle</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Informations de la salle</CardTitle>
+            <CardDescription>Renseignez les détails de la salle</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="nom">
@@ -208,6 +210,36 @@ export default function SalleFormPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Sidebar avec illustration */}
+      <div className="space-y-6">
+        <Card className="overflow-hidden">
+          <CardContent className="p-4 flex items-center justify-center">
+            <div className="w-full h-48 overflow-hidden">
+              <img
+                src={ajoutSalleHeroImg}
+                alt="Ajout d'une salle"
+                className="w-full h-full object-contain"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Information</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            <p>
+              {isEditing
+                ? "Modifiez les informations de la salle. Vous pouvez mettre à jour sa capacité, ses équipements et sa disponibilité."
+                : "Ajoutez une nouvelle salle pour les soutenances. Renseignez sa capacité, ses équipements et sa disponibilité."
+              }
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
     </div>
   );
 }

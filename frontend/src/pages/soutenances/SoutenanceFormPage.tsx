@@ -14,10 +14,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { 
-  StatutSoutenance, 
-  STATUT_SOUTENANCE_LABELS 
+import {
+  StatutSoutenance,
+  STATUT_SOUTENANCE_LABELS
 } from "@/types/models";
+import planifierSoutenanceHeroImg from "@/assets/illustrations/planifier-soutenance-hero.png";
 
 const STATUTS: StatutSoutenance[] = ['PLANIFIEE', 'EN_COURS', 'TERMINEE', 'ANNULEE'];
 
@@ -145,8 +146,9 @@ export default function SoutenanceFormPage() {
         </div>
       </div>
 
-      <div className="max-w-3xl">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <form onSubmit={handleSubmit} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Dossier de soutenance</CardTitle>
@@ -361,6 +363,36 @@ export default function SoutenanceFormPage() {
           </div>
         </form>
       </div>
+
+      {/* Sidebar avec illustration */}
+      <div className="space-y-6">
+        <Card className="overflow-hidden">
+          <CardContent className="p-4 flex items-center justify-center">
+            <div className="w-full h-48 overflow-hidden">
+              <img
+                src={planifierSoutenanceHeroImg}
+                alt="Planifier une soutenance"
+                className="w-full h-full object-contain"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Information</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            <p>
+              {isEditing
+                ? "Modifiez les détails de la soutenance : date, heure, salle, jury et statut."
+                : "Planifiez une nouvelle soutenance en sélectionnant un dossier validé, une date, une salle et un jury."
+              }
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
     </div>
   );
 }

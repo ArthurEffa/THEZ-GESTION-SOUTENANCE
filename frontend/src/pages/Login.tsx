@@ -138,46 +138,6 @@ export default function Login() {
             </div>
           </form>
 
-          {/* Demo Accounts */}
-          <div className="mt-6 pt-4 border-t border-white/20">
-            <p className="text-xs text-gray-700 font-medium mb-3 text-center drop-shadow-sm">Comptes de test</p>
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => { setEmail("admin@ecole.fr"); setPassword("admin123"); }}
-                className="w-full flex items-center gap-3 p-2 rounded-lg bg-white/70 hover:bg-white/90 transition-colors text-left"
-              >
-                <div className="w-2 h-2 rounded-full bg-blue-600"></div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Administrateur</p>
-                  <p className="text-xs text-gray-500">admin@ecole.fr</p>
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={() => { setEmail("etudiant@ecole.fr"); setPassword("etudiant123"); }}
-                className="w-full flex items-center gap-3 p-2 rounded-lg bg-white/70 hover:bg-white/90 transition-colors text-left"
-              >
-                <div className="w-2 h-2 rounded-full bg-green-600"></div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Etudiant</p>
-                  <p className="text-xs text-gray-500">etudiant@ecole.fr</p>
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={() => { setEmail("jury@ecole.fr"); setPassword("jury123"); }}
-                className="w-full flex items-center gap-3 p-2 rounded-lg bg-white/70 hover:bg-white/90 transition-colors text-left"
-              >
-                <div className="w-2 h-2 rounded-full bg-amber-600"></div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Jury</p>
-                  <p className="text-xs text-gray-500">jury@ecole.fr</p>
-                </div>
-              </button>
-            </div>
-          </div>
-
           {/* Footer */}
           <p className="text-center text-xs text-white/80 font-medium mt-6 drop-shadow-sm">
             2024 GestSoutenance

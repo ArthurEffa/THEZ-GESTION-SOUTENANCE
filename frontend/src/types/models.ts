@@ -64,9 +64,8 @@ export interface CandidatProfile {
   user_id: string;
   matricule: string;
   niveau_etude: NiveauEtude;
-  departement: Departement;
-  departement_id: string;
-  specialite: string;
+  departement?: Departement;
+  departement_id?: string;
   photo?: string;
   created_at: string;
   updated_at: string;
@@ -78,8 +77,6 @@ export interface EnseignantProfile {
   user_id: string;
   grade: GradeEnseignant;
   departements: Departement[];
-  specialite: string;
-  disponibilites: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -116,13 +113,15 @@ export interface DossierSoutenance {
   session: SessionSoutenance;
   session_id: string;
   titre_memoire: string;
-  theme: string;
   encadreur?: EnseignantProfile;
   encadreur_id?: string;
   statut: StatutDossier;
   date_depot: string;
   date_validation?: string;
   commentaires_admin?: string;
+  demande_suppression: boolean;
+  commentaire_suppression?: string;
+  date_demande_suppression?: string;
   created_at: string;
   updated_at: string;
 }
@@ -164,8 +163,6 @@ export interface Soutenance {
   dossier_id: string;
   jury?: Jury;
   jury_id?: string;
-  session: SessionSoutenance;
-  session_id: string;
   salle?: Salle;
   salle_id?: string;
   date_heure?: string;

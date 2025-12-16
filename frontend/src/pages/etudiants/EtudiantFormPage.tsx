@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { DEPARTMENTS } from "@/config/departments";
 import { NiveauEtude, NIVEAU_ETUDE_LABELS } from "@/types/models";
+import ajoutEtudiantHeroImg from "@/assets/illustrations/ajout-etudiant-hero.png";
 
 const NIVEAUX_ETUDE: NiveauEtude[] = ['LICENCE', 'MASTER', 'DOCTORAT'];
 
@@ -104,13 +105,14 @@ export default function EtudiantFormPage() {
         </div>
       </div>
 
-      <Card className="max-w-2xl">
-        <CardHeader>
-          <CardTitle>Informations utilisateur</CardTitle>
-          <CardDescription>Données de connexion et coordonnées</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Informations utilisateur</CardTitle>
+            <CardDescription>Données de connexion et coordonnées</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -317,6 +319,36 @@ export default function EtudiantFormPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Sidebar avec illustration */}
+      <div className="space-y-6">
+        <Card className="overflow-hidden">
+          <CardContent className="p-4 flex items-center justify-center">
+            <div className="w-full h-48 overflow-hidden">
+              <img
+                src={ajoutEtudiantHeroImg}
+                alt="Ajout d'un candidat"
+                className="w-full h-full object-contain"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Information</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            <p>
+              {isEditing
+                ? "Modifiez les informations du candidat. Les champs marqués d'un astérisque (*) sont obligatoires."
+                : "Créez un nouveau compte candidat. Un email et un mot de passe lui seront attribués pour accéder à son espace personnel."
+              }
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
     </div>
   );
 }

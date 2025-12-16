@@ -10,12 +10,11 @@ export default function DashboardRouter() {
   const { user } = useAuth();
 
   switch (user?.role) {
-    case "admin":
+    case "ADMIN":
       return <Dashboard />;
-    case "etudiant":
+    case "CANDIDAT":
       return <EtudiantDashboard />;
-    case "jury":
-    case "encadreur":
+    case "ENSEIGNANT":
       return <EnseignantDashboard />;
     default:
       return <Dashboard />;

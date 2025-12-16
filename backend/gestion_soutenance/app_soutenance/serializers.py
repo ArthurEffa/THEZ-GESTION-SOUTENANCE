@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import (
     CustomUser, Departement, CandidatProfile, EnseignantProfile,
     SessionSoutenance, Salle, DossierSoutenance, Document,
@@ -25,11 +26,49 @@ class SimpleUserSerializer(serializers.ModelSerializer):
 
 class CustomUserSerializer(serializers.ModelSerializer):
     """Serializer pour le modèle CustomUser"""
+    password = serializers.CharField(write_only=True, required=False, validators=[validate_password])
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'email', 'username', 'first_name', 'last_name', 'role', 'phone', 'is_active', 'date_joined']
+        fields = ['id', 'email', 'username', 'first_name', 'last_name', 'role', 'phone', 'password', 'is_active', 'date_joined']
         read_only_fields = ['id', 'date_joined']
+        extra_kwargs = {
+            'password': {'write_only': True, 'required': False}
+        }
+
+    def create(self, validated_data):
+        """Créer un utilisateur avec mot de passe hashé"""
+        password = validated_data.pop('password', None)
+
+        # Auto-générer username si non fourni
+        if 'username' not in validated_data or not validated_data['username']:
+            validated_data['username'] = validated_data['email'].split('@')[0]
+
+        # Créer l'utilisateur
+        if password:
+            user = CustomUser.objects.create_user(password=password, **validated_data)
+        else:
+            # Si pas de password fourni, générer un password aléatoire temporaire
+            import secrets
+            temp_password = secrets.token_urlsafe(16)
+            user = CustomUser.objects.create_user(password=temp_password, **validated_data)
+
+        return user
+
+    def update(self, instance, validated_data):
+        """Mettre à jour un utilisateur (avec gestion du password)"""
+        password = validated_data.pop('password', None)
+
+        # Mettre à jour les autres champs
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        # Si un nouveau password est fourni, le hashé
+        if password:
+            instance.set_password(password)
+
+        instance.save()
+        return instance
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):

@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import authService from '@/services/authService';
+import { CustomUser } from '@/types/models';
 
-export type UserRole = 'admin' | 'etudiant' | 'jury' | 'encadreur';
+export type UserRole = 'ADMIN' | 'CANDIDAT' | 'ENSEIGNANT';
 
 export interface User {
   id: string;
@@ -15,78 +17,50 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Demo users for testing without backend
-const DEMO_USERS: Record<string, { password: string; user: User }> = {
-  'admin@ecole.fr': {
-    password: 'admin123',
-    user: {
-      id: '1',
-      email: 'admin@ecole.fr',
-      firstName: 'Marie',
-      lastName: 'Dupont',
-      role: 'admin',
-    },
-  },
-  'etudiant@ecole.fr': {
-    password: 'etudiant123',
-    user: {
-      id: '2',
-      email: 'etudiant@ecole.fr',
-      firstName: 'Pierre',
-      lastName: 'Martin',
-      role: 'etudiant',
-    },
-  },
-  'jury@ecole.fr': {
-    password: 'jury123',
-    user: {
-      id: '3',
-      email: 'jury@ecole.fr',
-      firstName: 'Jean',
-      lastName: 'Professeur',
-      role: 'jury',
-    },
-  },
-};
+// Fonction pour convertir CustomUser (backend) en User (frontend)
+function convertToUser(customUser: CustomUser): User {
+  return {
+    id: customUser.id,
+    email: customUser.email,
+    firstName: customUser.first_name,
+    lastName: customUser.last_name,
+    role: customUser.role,
+  };
+}
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
-    const storedUser = localStorage.getItem('soutenance_user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        localStorage.removeItem('soutenance_user');
-      }
+    // Vérifier s'il y a une session existante
+    const currentUser = authService.getCurrentUser();
+    if (currentUser) {
+      setUser(convertToUser(currentUser));
     }
     setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const demoUser = DEMO_USERS[email.toLowerCase()];
-    if (demoUser && demoUser.password === password) {
-      setUser(demoUser.user);
-      localStorage.setItem('soutenance_user', JSON.stringify(demoUser.user));
+    try {
+      const response = await authService.login({ email, password });
+      const userData = convertToUser(response.user);
+      setUser(userData);
       return true;
+    } catch (error) {
+      console.error('Erreur de connexion:', error);
+      return false;
     }
-    return false;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await authService.logout();
     setUser(null);
-    localStorage.removeItem('soutenance_user');
   };
 
   return (

@@ -46,6 +46,26 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAdmin])
+    def set_password(self, request, pk=None):
+        """Définir un nouveau mot de passe pour un utilisateur (Admin uniquement)"""
+        user = self.get_object()
+        password = request.data.get('password')
+
+        if not password:
+            return Response(
+                {'error': 'Le champ password est requis'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user.set_password(password)
+        user.save()
+
+        return Response(
+            {'message': f'Mot de passe modifié pour {user.email}'},
+            status=status.HTTP_200_OK
+        )
+
 
 # ============================================================================
 # VIEWSETS DÉPARTEMENTS

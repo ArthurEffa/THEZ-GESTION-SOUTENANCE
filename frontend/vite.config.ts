@@ -11,6 +11,10 @@ export default defineConfig(({ mode }) => ({
   preview: {
     host: "0.0.0.0",
     port: Number(process.env.PORT) || 8080,
+    allowedHosts: [
+      "satisfied-spontaneity-production.up.railway.app",
+      ".railway.app",
+    ],
   },
   plugins: [react()],
   resolve: {

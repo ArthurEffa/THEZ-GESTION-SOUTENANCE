@@ -208,7 +208,7 @@ class DossierSoutenanceViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['titre_memoire', 'candidat__matricule', 'candidat__user__last_name']
     ordering_fields = ['date_depot', 'created_at']
-    filterset_fields = ['statut', 'session', 'candidat__niveau_etude', 'demande_suppression']
+    filterset_fields = ['statut', 'session', 'candidat__cycle', 'demande_suppression']
 
     def get_serializer_class(self):
         """Utiliser un serializer différent pour la liste"""

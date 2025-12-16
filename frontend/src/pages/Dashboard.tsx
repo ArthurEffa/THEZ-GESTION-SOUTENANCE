@@ -22,7 +22,7 @@ const upcomingSoutenances = [
     date: "15 Déc 2024",
     heure: "09:00",
     etudiant: "Marie Martin",
-    filiere: "Informatique",
+    departement: "Informatique",
     salle: "A101",
     status: "PLANIFIEE" as SoutenanceStatus,
   },
@@ -31,7 +31,7 @@ const upcomingSoutenances = [
     date: "15 Déc 2024",
     heure: "10:30",
     etudiant: "Paul Dubois",
-    filiere: "Génie Civil",
+    departement: "Génie Civil",
     salle: "B204",
     status: "PLANIFIEE" as SoutenanceStatus,
   },
@@ -40,7 +40,7 @@ const upcomingSoutenances = [
     date: "15 Déc 2024",
     heure: "14:00",
     etudiant: "Sophie Lefebvre",
-    filiere: "Informatique",
+    departement: "Informatique",
     salle: "A101",
     status: "PLANIFIEE" as SoutenanceStatus,
   },
@@ -49,7 +49,7 @@ const upcomingSoutenances = [
     date: "16 Déc 2024",
     heure: "09:00",
     etudiant: "Lucas Bernard",
-    filiere: "Électronique",
+    departement: "Électronique",
     salle: "C302",
     status: "PLANIFIEE" as SoutenanceStatus,
   },
@@ -58,7 +58,7 @@ const upcomingSoutenances = [
     date: "16 Déc 2024",
     heure: "11:00",
     etudiant: "Emma Petit",
-    filiere: "Mécanique",
+    departement: "Mécanique",
     salle: "A101",
     status: "PLANIFIEE" as SoutenanceStatus,
   },
@@ -130,17 +130,17 @@ export default function Dashboard() {
 
       {/* Quick Actions */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card 
+        <Card
           className="card-hover cursor-pointer group"
-          onClick={() => navigate("/filieres")}
+          onClick={() => navigate("/departements")}
         >
           <CardContent className="p-4 flex items-center gap-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
               <GraduationCap className="h-5 w-5" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium">Filières</p>
-              <p className="text-xs text-muted-foreground">8 filières</p>
+              <p className="text-sm font-medium">Départements</p>
+              <p className="text-xs text-muted-foreground">8 départements</p>
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
           </CardContent>
@@ -232,7 +232,7 @@ export default function Dashboard() {
                     <div>
                       <p className="font-medium">{soutenance.etudiant}</p>
                       <p className="text-sm text-muted-foreground">
-                        {soutenance.heure} • {soutenance.salle} • {soutenance.filiere}
+                        {soutenance.heure} • {soutenance.salle} • {soutenance.departement}
                       </p>
                     </div>
                   </div>

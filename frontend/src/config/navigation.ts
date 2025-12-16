@@ -30,8 +30,8 @@ export const navigationItems: NavigationItem[] = [
 
   // === ADMIN UNIQUEMENT ===
   {
-    title: "Filières",
-    url: "/filieres",
+    title: "Départements",
+    url: "/departements",
     icon: GraduationCap,
     roles: ["ADMIN"],
   },

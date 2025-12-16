@@ -13,8 +13,8 @@ import DashboardRouter from "@/pages/DashboardRouter";
 import NotFound from "@/pages/NotFound";
 
 // Pages Admin
-import FilieresPage from "@/pages/filieres/FilieresPage";
-import FiliereFormPage from "@/pages/filieres/FiliereFormPage";
+import DepartementsPage from "@/pages/departements/DepartementsPage";
+import DepartementFormPage from "@/pages/departements/DepartementFormPage";
 import SallesPage from "@/pages/salles/SallesPage";
 import SalleFormPage from "@/pages/salles/SalleFormPage";
 import JurysPage from "@/pages/jurys/JurysPage";
@@ -61,24 +61,24 @@ function AppRoutes() {
         <Route path="/" element={<DashboardRouter />} />
         
         {/* === ROUTES ADMIN UNIQUEMENT === */}
-        <Route path="/filieres" element={
+        <Route path="/departements" element={
           <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <FilieresPage />
+            <DepartementsPage />
           </ProtectedRoute>
         } />
-        <Route path="/filieres/nouveau" element={
+        <Route path="/departements/nouveau" element={
           <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <FiliereFormPage />
+            <DepartementFormPage />
           </ProtectedRoute>
         } />
-        <Route path="/filieres/:id" element={
+        <Route path="/departements/:id" element={
           <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <FiliereFormPage />
+            <DepartementFormPage />
           </ProtectedRoute>
         } />
-        <Route path="/filieres/:id/modifier" element={
+        <Route path="/departements/:id/modifier" element={
           <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <FiliereFormPage />
+            <DepartementFormPage />
           </ProtectedRoute>
         } />
 

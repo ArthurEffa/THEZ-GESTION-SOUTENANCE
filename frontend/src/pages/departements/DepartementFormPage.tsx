@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 
-export default function FiliereFormPage() {
+export default function DepartementFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = Boolean(id);
@@ -44,29 +44,29 @@ export default function FiliereFormPage() {
     await new Promise((resolve) => setTimeout(resolve, 500));
     setIsLoading(false);
 
-    toast.success(isEditing ? "Filière modifiée avec succès" : "Filière créée avec succès");
-    navigate("/filieres");
+    toast.success(isEditing ? "Département modifié avec succès" : "Département créé avec succès");
+    navigate("/departements");
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/filieres")}>
+        <Button variant="ghost" size="icon" onClick={() => navigate("/departements")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {isEditing ? "Modifier la filière" : "Nouvelle filière"}
+            {isEditing ? "Modifier le département" : "Nouveau département"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {isEditing ? "Modifiez les informations de la filière" : "Créez une nouvelle filière académique"}
+            {isEditing ? "Modifiez les informations du département" : "Créez un nouveau département académique"}
           </p>
         </div>
       </div>
 
       <Card className="max-w-2xl">
         <CardHeader>
-          <CardTitle>Informations de la filière</CardTitle>
+          <CardTitle>Informations du département</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -109,7 +109,7 @@ export default function FiliereFormPage() {
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
-                placeholder="Description de la filière..."
+                placeholder="Description du département..."
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={4}
@@ -117,7 +117,7 @@ export default function FiliereFormPage() {
             </div>
 
             <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={() => navigate("/filieres")}>
+              <Button type="button" variant="outline" onClick={() => navigate("/departements")}>
                 Annuler
               </Button>
               <Button type="submit" disabled={isLoading}>

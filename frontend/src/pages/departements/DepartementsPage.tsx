@@ -8,36 +8,36 @@ import { toast } from "sonner";
 import { DEPARTMENTS, Department } from "@/config/departments";
 import departmentsHeroImage from "@/assets/illustrations/departments-hero.png";
 
-interface Filiere extends Department {
+interface Departement extends Department {
   nombreEtudiants: number;
 }
 
 // Données de démo basées sur les départements centralisés
-const demoFilieres: Filiere[] = DEPARTMENTS.map((dept, index) => ({
+const demoDepartements: Departement[] = DEPARTMENTS.map((dept, index) => ({
   ...dept,
   nombreEtudiants: [48, 35, 28, 32, 22, 25, 30, 38, 20, 42, 55][index] || 30,
 }));
 
-export default function FilieresPage() {
+export default function DepartementsPage() {
   const navigate = useNavigate();
-  const [filieres, setFilieres] = useState<Filiere[]>(demoFilieres);
+  const [departements, setDepartements] = useState<Departement[]>(demoDepartements);
   const [searchQuery, setSearchQuery] = useState("");
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; filiere: Filiere | null }>({
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; departement: Departement | null }>({
     open: false,
-    filiere: null,
+    departement: null,
   });
 
-  const filteredFilieres = filieres.filter(
+  const filteredDepartements = departements.filter(
     (f) =>
       f.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
       f.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleDelete = () => {
-    if (deleteDialog.filiere) {
-      setFilieres((prev) => prev.filter((f) => f.id !== deleteDialog.filiere?.id));
-      toast.success(`Filière "${deleteDialog.filiere.nom}" supprimée`);
-      setDeleteDialog({ open: false, filiere: null });
+    if (deleteDialog.departement) {
+      setDepartements((prev) => prev.filter((f) => f.id !== deleteDialog.departement?.id));
+      toast.success(`Département "${deleteDialog.departement.nom}" supprimé`);
+      setDeleteDialog({ open: false, departement: null });
     }
   };
 
@@ -50,9 +50,9 @@ export default function FilieresPage() {
           <p className="text-muted-foreground">
             Gérez les départements académiques de l'établissement
           </p>
-          <Button 
+          <Button
             className="mt-4"
-            onClick={() => navigate("/filieres/nouveau")}
+            onClick={() => navigate("/departements/nouveau")}
           >
             Ajouter un département
           </Button>
@@ -78,45 +78,45 @@ export default function FilieresPage() {
 
       {/* Grid de départements avec espaces pour illustrations */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredFilieres.map((filiere) => (
-          <Card 
-            key={filiere.id} 
+        {filteredDepartements.map((departement) => (
+          <Card
+            key={departement.id}
             className="group hover:shadow-md transition-shadow cursor-pointer border-border/60"
-            onClick={() => navigate(`/filieres/${filiere.id}`)}
+            onClick={() => navigate(`/departements/${departement.id}`)}
           >
             <CardContent className="p-0">
               {/* Espace réservé pour illustration */}
               <div className="h-32 bg-muted/30 border-b border-border/40 flex items-center justify-center">
                 <div className="text-center text-muted-foreground/50">
                   <div className="w-16 h-16 mx-auto mb-2 rounded-lg bg-muted/50 flex items-center justify-center">
-                    <span className="text-2xl font-semibold text-muted-foreground/40">{filiere.code.charAt(0)}</span>
+                    <span className="text-2xl font-semibold text-muted-foreground/40">{departement.code.charAt(0)}</span>
                   </div>
                   <span className="text-xs">Illustration à ajouter</span>
                 </div>
               </div>
-              
+
               {/* Contenu */}
               <div className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-mono font-medium text-primary bg-primary/5 px-1.5 py-0.5 rounded">
-                        {filiere.code}
+                        {departement.code}
                       </span>
                     </div>
                     <h3 className="font-medium text-sm leading-tight line-clamp-2">
-                      {filiere.nom}
+                      {departement.nom}
                     </h3>
                   </div>
                 </div>
-                
+
                 <p className="text-xs text-muted-foreground line-clamp-2">
-                  {filiere.description}
+                  {departement.description}
                 </p>
-                
+
                 <div className="flex items-center justify-between pt-2 border-t border-border/40">
                   <span className="text-xs text-muted-foreground">
-                    {filiere.nombreEtudiants} étudiants
+                    {departement.nombreEtudiants} étudiants
                   </span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
@@ -125,7 +125,7 @@ export default function FilieresPage() {
                       className="h-7 px-2 text-xs"
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate(`/filieres/${filiere.id}/modifier`);
+                        navigate(`/departements/${departement.id}/modifier`);
                       }}
                     >
                       Modifier
@@ -136,7 +136,7 @@ export default function FilieresPage() {
                       className="h-7 px-2 text-xs text-destructive hover:text-destructive"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setDeleteDialog({ open: true, filiere });
+                        setDeleteDialog({ open: true, departement });
                       }}
                     >
                       Supprimer
@@ -149,7 +149,7 @@ export default function FilieresPage() {
         ))}
       </div>
 
-      {filteredFilieres.length === 0 && (
+      {filteredDepartements.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
           Aucun département trouvé
         </div>
@@ -157,9 +157,9 @@ export default function FilieresPage() {
 
       <ConfirmDialog
         open={deleteDialog.open}
-        onOpenChange={(open) => setDeleteDialog({ open, filiere: null })}
+        onOpenChange={(open) => setDeleteDialog({ open, departement: null })}
         title="Supprimer le département"
-        description={`Êtes-vous sûr de vouloir supprimer "${deleteDialog.filiere?.nom}" ? Cette action est irréversible.`}
+        description={`Êtes-vous sûr de vouloir supprimer "${deleteDialog.departement?.nom}" ? Cette action est irréversible.`}
         confirmLabel="Supprimer"
         onConfirm={handleDelete}
         variant="destructive"

@@ -6,10 +6,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import ajoutSalleHeroImg from "@/assets/illustrations/ajout-salle-hero.png";
 import salleService, { SalleFormData } from "@/services/salleService";
+
+const BATIMENTS = [
+  "Bâtiment administratif",
+  "Bâtiment pédagogique",
+  "Bâtiment scolaire",
+] as const;
 
 export default function SalleFormPage() {
   const navigate = useNavigate();
@@ -145,13 +158,21 @@ export default function SalleFormPage() {
                 <Label htmlFor="batiment">
                   Bâtiment <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  id="batiment"
-                  placeholder="BS (Bâtiment Scolaire)"
+                <Select
                   value={formData.batiment}
-                  onChange={(e) => setFormData({ ...formData, batiment: e.target.value })}
-                  className={errors.batiment ? "border-destructive" : ""}
-                />
+                  onValueChange={(value) => setFormData({ ...formData, batiment: value })}
+                >
+                  <SelectTrigger className={errors.batiment ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Sélectionner un bâtiment" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BATIMENTS.map((batiment) => (
+                      <SelectItem key={batiment} value={batiment}>
+                        {batiment}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {errors.batiment && (
                   <p className="text-sm text-destructive">{errors.batiment}</p>
                 )}

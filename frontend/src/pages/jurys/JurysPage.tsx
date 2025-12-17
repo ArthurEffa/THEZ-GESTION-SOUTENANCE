@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserCheck } from "lucide-react";
+import { UserCheck, Loader2 } from "lucide-react";
 import jurysHeroImage from "@/assets/illustrations/jurys-hero.png";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, Column } from "@/components/common/DataTable";
@@ -14,138 +14,187 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-
-interface Jury {
-  id: string;
-  prenom: string;
-  nom: string;
-  email: string;
-  telephone: string;
-  specialite: string;
-  type: "Professeur" | "Intervenant" | "Docteur";
-  etablissement: string;
-}
-
-// Demo data
-const demoJurys: Jury[] = [
-  { id: "1", prenom: "Jean", nom: "Dupont", email: "j.dupont@ecole.fr", telephone: "0612345678", specialite: "Intelligence Artificielle", type: "Professeur", etablissement: "École Polytechnique" },
-  { id: "2", prenom: "Marie", nom: "Martin", email: "m.martin@univ.fr", telephone: "0623456789", specialite: "Réseaux et Télécommunications", type: "Docteur", etablissement: "Université Paris-Saclay" },
-  { id: "3", prenom: "Paul", nom: "Bernard", email: "p.bernard@tech.com", telephone: "0634567890", specialite: "Cybersécurité", type: "Intervenant", etablissement: "Tech Solutions SA" },
-  { id: "4", prenom: "Sophie", nom: "Lefebvre", email: "s.lefebvre@ecole.fr", telephone: "0645678901", specialite: "Base de données", type: "Professeur", etablissement: "École Centrale" },
-  { id: "5", prenom: "Pierre", nom: "Moreau", email: "p.moreau@univ.fr", telephone: "0656789012", specialite: "Génie Logiciel", type: "Docteur", etablissement: "Sorbonne Université" },
-  { id: "6", prenom: "Claire", nom: "Rousseau", email: "c.rousseau@ecole.fr", telephone: "0667890123", specialite: "Machine Learning", type: "Professeur", etablissement: "ENSAE" },
-];
+import { EnseignantProfile, GRADE_ENSEIGNANT_LABELS } from "@/types/models";
+import enseignantService from "@/services/enseignantService";
 
 export default function JurysPage() {
   const navigate = useNavigate();
-  const [jurys, setJurys] = useState<Jury[]>(demoJurys);
-  const [filterType, setFilterType] = useState<string>("all");
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; jury: Jury | null }>({
+
+  // États
+  const [enseignants, setEnseignants] = useState<EnseignantProfile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [filterGrade, setFilterGrade] = useState<string>("all");
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    enseignant: EnseignantProfile | null
+  }>({
     open: false,
-    jury: null,
+    enseignant: null,
   });
 
-  const filteredJurys = jurys.filter((jury) => {
-    if (filterType === "all") return true;
-    return jury.type === filterType;
+  // Charger les données au montage du composant
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const data = await enseignantService.getAll();
+      setEnseignants(data);
+    } catch (error: any) {
+      console.error('Erreur lors du chargement des enseignants:', error);
+      toast.error('Erreur lors du chargement des enseignants');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Filtrer les enseignants
+  const filteredEnseignants = enseignants.filter((enseignant) => {
+    if (filterGrade !== "all" && enseignant.grade !== filterGrade) {
+      return false;
+    }
+    return true;
   });
 
-  const columns: Column<Jury>[] = [
+  // Colonnes du tableau
+  const columns: Column<EnseignantProfile>[] = [
     {
       key: "nom",
       header: "Nom complet",
-      render: (jury) => (
-        <span className="font-medium">{jury.prenom} {jury.nom}</span>
+      render: (enseignant) => (
+        <span className="font-medium">
+          {enseignant.user.first_name} {enseignant.user.last_name}
+        </span>
       ),
     },
     {
       key: "email",
       header: "Email",
-      render: (jury) => (
-        <a href={`mailto:${jury.email}`} className="text-primary hover:underline">
-          {jury.email}
+      render: (enseignant) => (
+        <a
+          href={`mailto:${enseignant.user.email}`}
+          className="text-primary hover:underline"
+        >
+          {enseignant.user.email}
         </a>
       ),
     },
     {
-      key: "specialite",
-      header: "Spécialité",
+      key: "grade",
+      header: "Grade",
+      render: (enseignant) => (
+        <Badge variant="default">{GRADE_ENSEIGNANT_LABELS[enseignant.grade]}</Badge>
+      ),
     },
     {
-      key: "type",
-      header: "Type",
-      render: (jury) => {
-        const variants: Record<string, "default" | "secondary" | "outline"> = {
-          Professeur: "default",
-          Docteur: "secondary",
-          Intervenant: "outline",
-        };
-        return <Badge variant={variants[jury.type]}>{jury.type}</Badge>;
-      },
+      key: "departements",
+      header: "Départements",
+      render: (enseignant) => (
+        <div className="flex flex-wrap gap-1">
+          {enseignant.departements.length > 0 ? (
+            enseignant.departements.map((dept) => (
+              <Badge key={dept.id} variant="secondary" className="text-xs">
+                {dept.code}
+              </Badge>
+            ))
+          ) : (
+            <span className="text-muted-foreground text-sm">Non assigné</span>
+          )}
+        </div>
+      ),
     },
     {
-      key: "etablissement",
-      header: "Établissement",
-      render: (jury) => (
-        <span className="text-muted-foreground">{jury.etablissement}</span>
+      key: "telephone",
+      header: "Téléphone",
+      render: (enseignant) => (
+        <span className="text-muted-foreground">
+          {enseignant.user.phone || "—"}
+        </span>
       ),
     },
   ];
 
-  const handleDelete = () => {
-    if (deleteDialog.jury) {
-      setJurys((prev) => prev.filter((j) => j.id !== deleteDialog.jury?.id));
-      toast.success(`Jury "${deleteDialog.jury.prenom} ${deleteDialog.jury.nom}" supprimé`);
-      setDeleteDialog({ open: false, jury: null });
+  // Gérer la suppression
+  const handleDelete = async () => {
+    if (!deleteDialog.enseignant) return;
+
+    try {
+      await enseignantService.delete(deleteDialog.enseignant.id);
+
+      // Retirer de la liste locale
+      setEnseignants((prev) => prev.filter((e) => e.id !== deleteDialog.enseignant?.id));
+
+      toast.success(
+        `Enseignant "${deleteDialog.enseignant.user.first_name} ${deleteDialog.enseignant.user.last_name}" supprimé`
+      );
+      setDeleteDialog({ open: false, enseignant: null });
+    } catch (error: any) {
+      console.error('Erreur lors de la suppression:', error);
+      toast.error('Erreur lors de la suppression de l\'enseignant');
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <PageHeader
-          title="Jurys"
-          description="Gérez les membres du jury de soutenance"
+          title="Enseignants"
+          description={`${enseignants.length} enseignant${enseignants.length > 1 ? 's' : ''} enregistré${enseignants.length > 1 ? 's' : ''}`}
           icon={UserCheck}
           action={{
-            label: "Ajouter un jury",
-            onClick: () => navigate("/jurys/nouveau"),
+            label: "Ajouter un enseignant",
+            onClick: () => navigate("/enseignants/nouveau"),
           }}
         >
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filtrer par type" />
+          <Select value={filterGrade} onValueChange={setFilterGrade}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filtrer par grade" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous les types</SelectItem>
-              <SelectItem value="Professeur">Professeurs</SelectItem>
-              <SelectItem value="Docteur">Docteurs</SelectItem>
-              <SelectItem value="Intervenant">Intervenants</SelectItem>
+              <SelectItem value="all">Tous les grades</SelectItem>
+              <SelectItem value="PROFESSEUR">Professeur</SelectItem>
+              <SelectItem value="MAITRE_CONF">Maître de Conférence</SelectItem>
+              <SelectItem value="CHARGE_COURS">Chargé de Cours</SelectItem>
+              <SelectItem value="ASSISTANT">Assistant</SelectItem>
             </SelectContent>
           </Select>
         </PageHeader>
-        <img 
-          src={jurysHeroImage} 
-          alt="Illustration gestion des jurys" 
+        <img
+          src={jurysHeroImage}
+          alt="Illustration gestion des enseignants"
           className="hidden lg:block w-48 opacity-90"
         />
       </div>
 
       <DataTable
-        data={filteredJurys}
+        data={filteredEnseignants}
         columns={columns}
-        searchPlaceholder="Rechercher un jury..."
-        onView={(jury) => navigate(`/jurys/${jury.id}`)}
-        onEdit={(jury) => navigate(`/jurys/${jury.id}/modifier`)}
-        onDelete={(jury) => setDeleteDialog({ open: true, jury })}
-        emptyMessage="Aucun jury enregistré"
+        searchPlaceholder="Rechercher un enseignant..."
+        onView={(enseignant) => navigate(`/enseignants/${enseignant.id}`)}
+        onEdit={(enseignant) => navigate(`/enseignants/${enseignant.id}/modifier`)}
+        onDelete={(enseignant) => setDeleteDialog({ open: true, enseignant })}
+        emptyMessage="Aucun enseignant enregistré"
       />
 
       <ConfirmDialog
         open={deleteDialog.open}
-        onOpenChange={(open) => setDeleteDialog({ open, jury: null })}
-        title="Supprimer le jury"
-        description={`Êtes-vous sûr de vouloir supprimer "${deleteDialog.jury?.prenom} ${deleteDialog.jury?.nom}" de la liste des jurys ? Cette action est irréversible.`}
+        onOpenChange={(open) => setDeleteDialog({ open, enseignant: null })}
+        title="Supprimer l'enseignant"
+        description={
+          deleteDialog.enseignant
+            ? `Êtes-vous sûr de vouloir supprimer "${deleteDialog.enseignant.user.first_name} ${deleteDialog.enseignant.user.last_name}" ? Cette action supprimera également l'utilisateur associé.`
+            : ""
+        }
         confirmLabel="Supprimer"
         onConfirm={handleDelete}
         variant="destructive"

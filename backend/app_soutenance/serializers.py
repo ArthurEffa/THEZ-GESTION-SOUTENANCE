@@ -131,7 +131,7 @@ class SimpleCandidatProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CandidatProfile
-        fields = ['id', 'matricule', 'nom_complet', 'niveau_etude']
+        fields = ['id', 'matricule', 'nom_complet', 'cycle']
 
     def get_nom_complet(self, obj):
         return obj.user.get_full_name()
@@ -153,13 +153,85 @@ class CandidatProfileSerializer(serializers.ModelSerializer):
     """Serializer pour le profil Candidat"""
     user = CustomUserSerializer(read_only=True)
     departement = DepartementSerializer(read_only=True)
-    user_email = serializers.EmailField(write_only=True, required=False)
+
+    # Champs pour créer l'utilisateur en même temps (write_only)
+    email = serializers.EmailField(write_only=True, required=True)
+    first_name = serializers.CharField(write_only=True, required=True)
+    last_name = serializers.CharField(write_only=True, required=True)
+    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    username = serializers.CharField(write_only=True, required=False)
+    phone = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
     departement_id = serializers.UUIDField(write_only=True, required=False, allow_null=True)
 
     class Meta:
         model = CandidatProfile
-        fields = ['id', 'user', 'user_email', 'matricule', 'cycle', 'departement', 'departement_id', 'photo', 'created_at', 'updated_at']
+        fields = [
+            'id', 'user',
+            # Champs utilisateur (write_only pour création)
+            'email', 'first_name', 'last_name', 'password', 'username', 'phone',
+            # Champs profil candidat
+            'matricule', 'cycle', 'departement', 'departement_id', 'photo',
+            'created_at', 'updated_at'
+        ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def create(self, validated_data):
+        """Créer un utilisateur ET son profil candidat en une seule opération"""
+        # Extraire les données utilisateur
+        email = validated_data.pop('email')
+        first_name = validated_data.pop('first_name')
+        last_name = validated_data.pop('last_name')
+        password = validated_data.pop('password')
+        username = validated_data.pop('username', email.split('@')[0])
+        phone = validated_data.pop('phone', '')
+
+        # Vérifier si l'email existe déjà
+        if CustomUser.objects.filter(email=email).exists():
+            raise serializers.ValidationError({"email": "Cet email est déjà utilisé"})
+
+        # Créer l'utilisateur avec role CANDIDAT
+        user = CustomUser.objects.create_user(
+            email=email,
+            username=username,
+            first_name=first_name,
+            last_name=last_name,
+            password=password,
+            phone=phone,
+            role='CANDIDAT'
+        )
+
+        # Créer le profil candidat
+        candidat = CandidatProfile.objects.create(user=user, **validated_data)
+        return candidat
+
+    def update(self, instance, validated_data):
+        """Mettre à jour un profil candidat et ses données utilisateur"""
+        # Extraire les données utilisateur si présentes
+        email = validated_data.pop('email', None)
+        first_name = validated_data.pop('first_name', None)
+        last_name = validated_data.pop('last_name', None)
+        password = validated_data.pop('password', None)
+        username = validated_data.pop('username', None)
+        phone = validated_data.pop('phone', None)
+
+        # Mettre à jour l'utilisateur
+        if email: instance.user.email = email
+        if first_name: instance.user.first_name = first_name
+        if last_name: instance.user.last_name = last_name
+        if username: instance.user.username = username
+        if phone is not None: instance.user.phone = phone
+        if password: instance.user.set_password(password)
+
+        if any([email, first_name, last_name, username, phone, password]):
+            instance.user.save()
+
+        # Mettre à jour le profil
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        return instance
 
 
 class EnseignantProfileSerializer(serializers.ModelSerializer):

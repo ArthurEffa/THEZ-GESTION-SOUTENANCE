@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users } from "lucide-react";
+import { Users, Loader2 } from "lucide-react";
 import candidatsHeroImage from "@/assets/illustrations/etudiants-hero.png";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, Column } from "@/components/common/DataTable";
@@ -14,49 +14,64 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-
-interface Candidat {
-  id: string;
-  matricule: string;
-  prenom: string;
-  nom: string;
-  email: string;
-  telephone: string;
-  departement: string;
-  annee: string;
-}
-
-// Demo data
-const demoCandidats: Candidat[] = [
-  { id: "1", matricule: "ET2024001", prenom: "Marie", nom: "Martin", email: "m.martin@etu.fr", telephone: "0612345678", departement: "Informatique", annee: "2024-2025" },
-  { id: "2", matricule: "ET2024002", prenom: "Paul", nom: "Dubois", email: "p.dubois@etu.fr", telephone: "0623456789", departement: "Génie Civil", annee: "2024-2025" },
-  { id: "3", matricule: "ET2024003", prenom: "Sophie", nom: "Lefebvre", email: "s.lefebvre@etu.fr", telephone: "0634567890", departement: "Informatique", annee: "2024-2025" },
-  { id: "4", matricule: "ET2024004", prenom: "Lucas", nom: "Bernard", email: "l.bernard@etu.fr", telephone: "0645678901", departement: "Électronique", annee: "2024-2025" },
-  { id: "5", matricule: "ET2024005", prenom: "Emma", nom: "Petit", email: "e.petit@etu.fr", telephone: "0656789012", departement: "Mécanique", annee: "2024-2025" },
-  { id: "6", matricule: "ET2024006", prenom: "Thomas", nom: "Moreau", email: "t.moreau@etu.fr", telephone: "0667890123", departement: "Informatique", annee: "2024-2025" },
-  { id: "7", matricule: "ET2024007", prenom: "Léa", nom: "Garcia", email: "l.garcia@etu.fr", telephone: "0678901234", departement: "Télécommunications", annee: "2024-2025" },
-  { id: "8", matricule: "ET2023015", prenom: "Hugo", nom: "Roux", email: "h.roux@etu.fr", telephone: "0689012345", departement: "Informatique", annee: "2023-2024" },
-];
-
-const departements = ["Informatique", "Génie Civil", "Électronique", "Mécanique", "Télécommunications"];
+import { CandidatProfile, CYCLE_LABELS } from "@/types/models";
+import candidatService from "@/services/candidatService";
+import departementService from "@/services/departementService";
 
 export default function CandidatsPage() {
   const navigate = useNavigate();
-  const [candidats, setCandidats] = useState<Candidat[]>(demoCandidats);
+
+  // États
+  const [candidats, setCandidats] = useState<CandidatProfile[]>([]);
+  const [departements, setDepartements] = useState<{ id: string; nom: string }[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [filterDepartement, setFilterDepartement] = useState<string>("all");
-  const [filterAnnee, setFilterAnnee] = useState<string>("all");
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; candidat: Candidat | null }>({
+  const [filterCycle, setFilterCycle] = useState<string>("all");
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    candidat: CandidatProfile | null
+  }>({
     open: false,
     candidat: null,
   });
 
+  // Charger les données au montage du composant
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      // Charger candidats et départements en parallèle
+      const [candidatsData, departementsData] = await Promise.all([
+        candidatService.getAll(),
+        departementService.getAll(),
+      ]);
+
+      setCandidats(candidatsData);
+      setDepartements(departementsData);
+    } catch (error: any) {
+      console.error('Erreur lors du chargement des données:', error);
+      toast.error('Erreur lors du chargement des candidats');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Filtrer les candidats
   const filteredCandidats = candidats.filter((candidat) => {
-    if (filterDepartement !== "all" && candidat.departement !== filterDepartement) return false;
-    if (filterAnnee !== "all" && candidat.annee !== filterAnnee) return false;
+    if (filterDepartement !== "all" && candidat.departement?.id !== filterDepartement) {
+      return false;
+    }
+    if (filterCycle !== "all" && candidat.cycle !== filterCycle) {
+      return false;
+    }
     return true;
   });
 
-  const columns: Column<Candidat>[] = [
+  // Colonnes du tableau
+  const columns: Column<CandidatProfile>[] = [
     {
       key: "matricule",
       header: "Matricule",
@@ -68,79 +83,110 @@ export default function CandidatsPage() {
       key: "nom",
       header: "Nom complet",
       render: (candidat) => (
-        <span className="font-medium">{candidat.prenom} {candidat.nom}</span>
+        <span className="font-medium">
+          {candidat.user.first_name} {candidat.user.last_name}
+        </span>
       ),
     },
     {
       key: "email",
       header: "Email",
       render: (candidat) => (
-        <a href={`mailto:${candidat.email}`} className="text-primary hover:underline">
-          {candidat.email}
+        <a
+          href={`mailto:${candidat.user.email}`}
+          className="text-primary hover:underline"
+        >
+          {candidat.user.email}
         </a>
+      ),
+    },
+    {
+      key: "cycle",
+      header: "Cycle",
+      render: (candidat) => (
+        <Badge variant="outline">{CYCLE_LABELS[candidat.cycle]}</Badge>
       ),
     },
     {
       key: "departement",
       header: "Département",
       render: (candidat) => (
-        <Badge variant="secondary">{candidat.departement}</Badge>
-      ),
-    },
-    {
-      key: "annee",
-      header: "Année",
-      render: (candidat) => (
-        <span className="text-muted-foreground">{candidat.annee}</span>
+        <Badge variant="secondary">
+          {candidat.departement ? candidat.departement.nom : "Non assigné"}
+        </Badge>
       ),
     },
   ];
 
-  const handleDelete = () => {
-    if (deleteDialog.candidat) {
-      setCandidats((prev) => prev.filter((e) => e.id !== deleteDialog.candidat?.id));
-      toast.success(`Candidat "${deleteDialog.candidat.prenom} ${deleteDialog.candidat.nom}" supprimé`);
+  // Gérer la suppression
+  const handleDelete = async () => {
+    if (!deleteDialog.candidat) return;
+
+    try {
+      await candidatService.delete(deleteDialog.candidat.id);
+
+      // Retirer de la liste locale
+      setCandidats((prev) => prev.filter((c) => c.id !== deleteDialog.candidat?.id));
+
+      toast.success(
+        `Candidat "${deleteDialog.candidat.user.first_name} ${deleteDialog.candidat.user.last_name}" supprimé`
+      );
       setDeleteDialog({ open: false, candidat: null });
+    } catch (error: any) {
+      console.error('Erreur lors de la suppression:', error);
+      toast.error('Erreur lors de la suppression du candidat');
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <PageHeader
           title="Candidats"
-          description="Gérez les candidats en fin d'études"
+          description={`${candidats.length} candidat${candidats.length > 1 ? 's' : ''} enregistré${candidats.length > 1 ? 's' : ''}`}
           icon={Users}
           action={{
             label: "Ajouter un candidat",
             onClick: () => navigate("/candidats/nouveau"),
           }}
         >
+          {/* Filtre par département */}
           <Select value={filterDepartement} onValueChange={setFilterDepartement}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Filtrer par département" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tous les départements</SelectItem>
-              {departements.map((departement) => (
-                <SelectItem key={departement} value={departement}>
-                  {departement}
+              {departements.map((dept) => (
+                <SelectItem key={dept.id} value={dept.id}>
+                  {dept.nom}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          <Select value={filterAnnee} onValueChange={setFilterAnnee}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Année" />
+          {/* Filtre par cycle */}
+          <Select value={filterCycle} onValueChange={setFilterCycle}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filtrer par cycle" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Toutes</SelectItem>
-              <SelectItem value="2024-2025">2024-2025</SelectItem>
-              <SelectItem value="2023-2024">2023-2024</SelectItem>
+              <SelectItem value="all">Tous les cycles</SelectItem>
+              <SelectItem value="INGENIEUR">Ingénieur</SelectItem>
+              <SelectItem value="SCIENCE_INGENIEUR">Science de l'ingénieur</SelectItem>
+              <SelectItem value="MASTER_PRO">Master professionnel</SelectItem>
             </SelectContent>
           </Select>
         </PageHeader>
+
         <img
           src={candidatsHeroImage}
           alt="Illustration gestion des candidats"
@@ -162,7 +208,11 @@ export default function CandidatsPage() {
         open={deleteDialog.open}
         onOpenChange={(open) => setDeleteDialog({ open, candidat: null })}
         title="Supprimer le candidat"
-        description={`Êtes-vous sûr de vouloir supprimer "${deleteDialog.candidat?.prenom} ${deleteDialog.candidat?.nom}" ? Cette action est irréversible.`}
+        description={
+          deleteDialog.candidat
+            ? `Êtes-vous sûr de vouloir supprimer "${deleteDialog.candidat.user.first_name} ${deleteDialog.candidat.user.last_name}" ? Cette action supprimera également l'utilisateur associé.`
+            : ""
+        }
         confirmLabel="Supprimer"
         onConfirm={handleDelete}
         variant="destructive"

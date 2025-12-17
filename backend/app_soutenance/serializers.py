@@ -131,7 +131,7 @@ class SimpleCandidatProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CandidatProfile
-        fields = ['id', 'matricule', 'nom_complet', 'niveau_etude']
+        fields = ['id', 'matricule', 'nom_complet', 'cycle']
 
     def get_nom_complet(self, obj):
         return obj.user.get_full_name()

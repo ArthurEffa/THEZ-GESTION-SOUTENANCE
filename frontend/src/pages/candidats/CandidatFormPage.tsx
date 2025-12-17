@@ -15,10 +15,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { DEPARTMENTS } from "@/config/departments";
-import { NiveauEtude, NIVEAU_ETUDE_LABELS } from "@/types/models";
+import { Cycle, CYCLE_LABELS } from "@/types/models";
 import ajoutCandidatHeroImg from "@/assets/illustrations/ajout-etudiant-hero.png";
 
-const NIVEAUX_ETUDE: NiveauEtude[] = ['LICENCE', 'MASTER', 'DOCTORAT'];
+const CYCLES: Cycle[] = ['INGENIEUR', 'SCIENCE_INGENIEUR', 'MASTER_PRO'];
 
 export default function CandidatFormPage() {
   const navigate = useNavigate();
@@ -35,7 +35,7 @@ export default function CandidatFormPage() {
     phone: "",
     // CandidatProfile fields
     matricule: "",
-    niveau_etude: "" as NiveauEtude | "",
+    cycle: "" as Cycle | "",
     departement_id: "",
     specialite: "",
   });
@@ -64,8 +64,8 @@ export default function CandidatFormPage() {
     if (!formData.matricule.trim()) {
       newErrors.matricule = "Le matricule est requis";
     }
-    if (!formData.niveau_etude) {
-      newErrors.niveau_etude = "Le niveau d'étude est requis";
+    if (!formData.cycle) {
+      newErrors.cycle = "Le cycle de formation est requis";
     }
     if (!formData.departement_id) {
       newErrors.departement_id = "Le département est requis";
@@ -242,26 +242,26 @@ export default function CandidatFormPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="niveau_etude">
-                    Niveau d'étude <span className="text-destructive">*</span>
+                  <Label htmlFor="cycle">
+                    Cycle de formation <span className="text-destructive">*</span>
                   </Label>
                   <Select
-                    value={formData.niveau_etude}
-                    onValueChange={(value) => setFormData({ ...formData, niveau_etude: value as NiveauEtude })}
+                    value={formData.cycle}
+                    onValueChange={(value) => setFormData({ ...formData, cycle: value as Cycle })}
                   >
-                    <SelectTrigger className={errors.niveau_etude ? "border-destructive" : ""}>
-                      <SelectValue placeholder="Sélectionner le niveau" />
+                    <SelectTrigger className={errors.cycle ? "border-destructive" : ""}>
+                      <SelectValue placeholder="Sélectionner le cycle" />
                     </SelectTrigger>
                     <SelectContent>
-                      {NIVEAUX_ETUDE.map((niveau) => (
-                        <SelectItem key={niveau} value={niveau}>
-                          {NIVEAU_ETUDE_LABELS[niveau]}
+                      {CYCLES.map((cycle) => (
+                        <SelectItem key={cycle} value={cycle}>
+                          {CYCLE_LABELS[cycle]}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  {errors.niveau_etude && (
-                    <p className="text-sm text-destructive">{errors.niveau_etude}</p>
+                  {errors.cycle && (
+                    <p className="text-sm text-destructive">{errors.cycle}</p>
                   )}
                 </div>
               </div>

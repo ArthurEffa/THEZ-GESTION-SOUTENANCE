@@ -14,15 +14,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { 
-  StatutSession, 
-  NiveauEtude,
+import {
+  StatutSession,
+  Cycle,
   STATUT_SESSION_LABELS,
-  NIVEAU_ETUDE_LABELS
+  CYCLE_LABELS
 } from "@/types/models";
 
 const STATUTS: StatutSession[] = ['OUVERT', 'FERME', 'EN_COURS', 'TERMINE'];
-const NIVEAUX: NiveauEtude[] = ['LICENCE', 'MASTER', 'DOCTORAT'];
+const CYCLES: Cycle[] = ['INGENIEUR', 'SCIENCE_INGENIEUR', 'MASTER_PRO'];
 
 export default function SessionFormPage() {
   const navigate = useNavigate();
@@ -34,7 +34,7 @@ export default function SessionFormPage() {
     annee_academique: "2024-2025",
     date_ouverture: "",
     date_cloture: "",
-    niveau_concerne: "" as NiveauEtude | "",
+    niveau_concerne: "" as Cycle | "",
     statut: "OUVERT" as StatutSession,
     description: "",
   });
@@ -131,19 +131,19 @@ export default function SessionFormPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="niveau_concerne">
-                  Niveau concerné <span className="text-destructive">*</span>
+                  Cycle concerné <span className="text-destructive">*</span>
                 </Label>
                 <Select
                   value={formData.niveau_concerne}
-                  onValueChange={(value) => setFormData({ ...formData, niveau_concerne: value as NiveauEtude })}
+                  onValueChange={(value) => setFormData({ ...formData, niveau_concerne: value as Cycle })}
                 >
                   <SelectTrigger className={errors.niveau_concerne ? "border-destructive" : ""}>
-                    <SelectValue placeholder="Sélectionner le niveau" />
+                    <SelectValue placeholder="Sélectionner le cycle" />
                   </SelectTrigger>
                   <SelectContent>
-                    {NIVEAUX.map((niveau) => (
-                      <SelectItem key={niveau} value={niveau}>
-                        {NIVEAU_ETUDE_LABELS[niveau]}
+                    {CYCLES.map((cycle) => (
+                      <SelectItem key={cycle} value={cycle}>
+                        {CYCLE_LABELS[cycle]}
                       </SelectItem>
                     ))}
                   </SelectContent>

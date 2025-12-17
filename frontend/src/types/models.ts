@@ -5,8 +5,8 @@
 // Rôles utilisateur (RBAC)
 export type UserRole = 'ADMIN' | 'CANDIDAT' | 'ENSEIGNANT';
 
-// Niveaux d'étude
-export type NiveauEtude = 'LICENCE' | 'MASTER' | 'DOCTORAT';
+// Cycles de formation
+export type Cycle = 'INGENIEUR' | 'SCIENCE_INGENIEUR' | 'MASTER_PRO';
 
 // Grades enseignant
 export type GradeEnseignant = 'PROFESSEUR' | 'MAITRE_CONF' | 'CHARGE_COURS' | 'ASSISTANT';
@@ -55,7 +55,6 @@ export interface Departement {
   id: string;
   code: string;
   nom: string;
-  description?: string;
 }
 
 export interface CandidatProfile {
@@ -63,7 +62,7 @@ export interface CandidatProfile {
   user: CustomUser;
   user_id: string;
   matricule: string;
-  niveau_etude: NiveauEtude;
+  cycle: Cycle;
   departement?: Departement;
   departement_id?: string;
   photo?: string;
@@ -101,7 +100,6 @@ export interface Salle {
   nom: string;
   batiment: string;
   capacite: number;
-  equipements: string[];
   est_disponible: boolean;
   created_at: string;
 }
@@ -177,10 +175,10 @@ export interface Soutenance {
 // LABELS FRANÇAIS
 // ============================================================================
 
-export const NIVEAU_ETUDE_LABELS: Record<NiveauEtude, string> = {
-  LICENCE: 'Licence',
-  MASTER: 'Master',
-  DOCTORAT: 'Doctorat',
+export const CYCLE_LABELS: Record<Cycle, string> = {
+  INGENIEUR: 'Ingénieur',
+  SCIENCE_INGENIEUR: 'Science de l\'ingénieur',
+  MASTER_PRO: 'Master professionnel',
 };
 
 export const GRADE_ENSEIGNANT_LABELS: Record<GradeEnseignant, string> = {

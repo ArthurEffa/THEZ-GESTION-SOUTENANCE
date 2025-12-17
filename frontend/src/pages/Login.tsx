@@ -140,7 +140,7 @@ export default function Login() {
 
           {/* Footer */}
           <p className="text-center text-xs text-white/80 font-medium mt-6 drop-shadow-sm">
-            2024 GestSoutenance
+            2025 GestSoutenance
           </p>
         </div>
       </div>

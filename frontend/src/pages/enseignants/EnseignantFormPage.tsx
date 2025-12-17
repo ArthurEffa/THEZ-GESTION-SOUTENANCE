@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,8 +15,9 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { DEPARTMENTS } from "@/config/departments";
-import { GradeEnseignant, GRADE_ENSEIGNANT_LABELS } from "@/types/models";
+import { GradeEnseignant, GRADE_ENSEIGNANT_LABELS, Departement } from "@/types/models";
+import enseignantService, { EnseignantFormData } from "@/services/enseignantService";
+import departementService from "@/services/departementService";
 
 const GRADES: GradeEnseignant[] = ['PROFESSEUR', 'MAITRE_CONF', 'CHARGE_COURS', 'ASSISTANT'];
 
@@ -25,21 +26,64 @@ export default function EnseignantFormPage() {
   const { id } = useParams();
   const isEditing = Boolean(id);
 
-  const [formData, setFormData] = useState({
-    // CustomUser fields
+  const [formData, setFormData] = useState<EnseignantFormData>({
     email: "",
     username: "",
     first_name: "",
     last_name: "",
     password: "",
     phone: "",
-    // EnseignantProfile fields
-    grade: "" as GradeEnseignant | "",
-    departement_ids: [] as string[],
-    specialite: "",
+    grade: "PROFESSEUR",
+    departement_ids: [],
   });
+
+  const [departements, setDepartements] = useState<Departement[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
+  // Charger les départements
+  useEffect(() => {
+    const loadDepartements = async () => {
+      try {
+        const data = await departementService.getAll();
+        setDepartements(data);
+      } catch (error: any) {
+        console.error('Erreur lors du chargement des départements:', error);
+        toast.error('Erreur lors du chargement des départements');
+      }
+    };
+    loadDepartements();
+  }, []);
+
+  // Charger les données de l'enseignant en mode édition
+  useEffect(() => {
+    if (isEditing && id) {
+      const loadEnseignant = async () => {
+        setIsLoadingData(true);
+        try {
+          const enseignant = await enseignantService.getById(id);
+          setFormData({
+            email: enseignant.user.email,
+            username: enseignant.user.username,
+            first_name: enseignant.user.first_name,
+            last_name: enseignant.user.last_name,
+            password: "",
+            phone: enseignant.user.phone || "",
+            grade: enseignant.grade,
+            departement_ids: enseignant.departements.map(d => d.id),
+          });
+        } catch (error: any) {
+          console.error('Erreur lors du chargement de l\'enseignant:', error);
+          toast.error('Erreur lors du chargement de l\'enseignant');
+          navigate("/enseignants");
+        } finally {
+          setIsLoadingData(false);
+        }
+      };
+      loadEnseignant();
+    }
+  }, [isEditing, id, navigate]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -59,15 +103,14 @@ export default function EnseignantFormPage() {
     }
     if (!isEditing && !formData.password.trim()) {
       newErrors.password = "Le mot de passe est requis";
+    } else if (formData.password && formData.password.length < 8) {
+      newErrors.password = "Le mot de passe doit contenir au minimum 8 caractères";
     }
     if (!formData.grade) {
       newErrors.grade = "Le grade est requis";
     }
     if (formData.departement_ids.length === 0) {
       newErrors.departement_ids = "Au moins un département est requis";
-    }
-    if (!formData.specialite.trim()) {
-      newErrors.specialite = "La spécialité est requise";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -84,15 +127,85 @@ export default function EnseignantFormPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+
+    if (!validate()) {
+      toast.error("Veuillez corriger les erreurs dans le formulaire");
+      return;
+    }
 
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setIsLoading(false);
 
-    toast.success(isEditing ? "Enseignant modifié avec succès" : "Enseignant créé avec succès");
-    navigate("/enseignants");
+    try {
+      if (isEditing && id) {
+        // Mode édition
+        const updateData: Partial<EnseignantFormData> = {
+          email: formData.email,
+          username: formData.username,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          phone: formData.phone,
+          grade: formData.grade,
+          departement_ids: formData.departement_ids,
+        };
+
+        // Ajouter le mot de passe seulement s'il est fourni
+        if (formData.password) {
+          updateData.password = formData.password;
+        }
+
+        await enseignantService.update(id, updateData);
+        toast.success("Enseignant modifié avec succès");
+      } else {
+        // Mode création
+        await enseignantService.create(formData);
+        toast.success("Enseignant créé avec succès");
+      }
+
+      navigate("/enseignants");
+    } catch (error: any) {
+      console.error('Erreur lors de la sauvegarde:', error);
+
+      // Gérer les erreurs spécifiques du backend
+      if (error.response?.data) {
+        const backendErrors = error.response.data;
+
+        // Si c'est un objet d'erreurs de validation
+        if (typeof backendErrors === 'object') {
+          const newErrors: Record<string, string> = {};
+
+          Object.keys(backendErrors).forEach((key) => {
+            const errorMessages = backendErrors[key];
+            if (Array.isArray(errorMessages)) {
+              newErrors[key] = errorMessages[0];
+            } else if (typeof errorMessages === 'string') {
+              newErrors[key] = errorMessages;
+            }
+          });
+
+          setErrors(newErrors);
+          toast.error("Erreur de validation du formulaire");
+        } else {
+          toast.error(backendErrors.detail || "Erreur lors de la sauvegarde");
+        }
+      } else {
+        toast.error(
+          isEditing
+            ? "Erreur lors de la modification de l'enseignant"
+            : "Erreur lors de la création de l'enseignant"
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  if (isLoadingData) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -195,14 +308,16 @@ export default function EnseignantFormPage() {
                   <Input
                     id="password"
                     type="password"
-                    placeholder={isEditing ? "Laisser vide pour ne pas modifier" : "********"}
+                    placeholder={isEditing ? "Laisser vide pour ne pas modifier" : "Min. 8 caractères"}
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     className={errors.password ? "border-destructive" : ""}
                   />
-                  {errors.password && (
+                  {errors.password ? (
                     <p className="text-sm text-destructive">{errors.password}</p>
-                  )}
+                  ) : !isEditing ? (
+                    <p className="text-xs text-muted-foreground">Minimum 8 caractères</p>
+                  ) : null}
                 </div>
 
                 <div className="space-y-2">
@@ -228,46 +343,28 @@ export default function EnseignantFormPage() {
                 </p>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="grade">
-                    Grade <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    value={formData.grade}
-                    onValueChange={(value) => setFormData({ ...formData, grade: value as GradeEnseignant })}
-                  >
-                    <SelectTrigger className={errors.grade ? "border-destructive" : ""}>
-                      <SelectValue placeholder="Sélectionner le grade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {GRADES.map((grade) => (
-                        <SelectItem key={grade} value={grade}>
-                          {GRADE_ENSEIGNANT_LABELS[grade]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.grade && (
-                    <p className="text-sm text-destructive">{errors.grade}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="specialite">
-                    Spécialité <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="specialite"
-                    placeholder="Intelligence Artificielle"
-                    value={formData.specialite}
-                    onChange={(e) => setFormData({ ...formData, specialite: e.target.value })}
-                    className={errors.specialite ? "border-destructive" : ""}
-                  />
-                  {errors.specialite && (
-                    <p className="text-sm text-destructive">{errors.specialite}</p>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="grade">
+                  Grade <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={formData.grade}
+                  onValueChange={(value) => setFormData({ ...formData, grade: value as GradeEnseignant })}
+                >
+                  <SelectTrigger className={errors.grade ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Sélectionner le grade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GRADES.map((grade) => (
+                      <SelectItem key={grade} value={grade}>
+                        {GRADE_ENSEIGNANT_LABELS[grade]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.grade && (
+                  <p className="text-sm text-destructive">{errors.grade}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -278,7 +375,7 @@ export default function EnseignantFormPage() {
                   Sélectionnez les départements auxquels l'enseignant est rattaché
                 </p>
                 <div className="grid gap-2 md:grid-cols-2 max-h-48 overflow-y-auto border rounded-md p-3">
-                  {DEPARTMENTS.map((dept) => (
+                  {departements.map((dept) => (
                     <div key={dept.id} className="flex items-center space-x-2">
                       <Checkbox
                         id={`dept-${dept.id}`}
@@ -286,7 +383,7 @@ export default function EnseignantFormPage() {
                         onCheckedChange={() => handleDepartementToggle(dept.id)}
                       />
                       <Label htmlFor={`dept-${dept.id}`} className="font-normal text-sm cursor-pointer">
-                        {dept.nom}
+                        {dept.code} - {dept.nom}
                       </Label>
                     </div>
                   ))}

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,8 +14,9 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { DEPARTMENTS } from "@/config/departments";
-import { Cycle, CYCLE_LABELS } from "@/types/models";
+import { Cycle, CYCLE_LABELS, Departement } from "@/types/models";
+import candidatService, { CandidatFormData } from "@/services/candidatService";
+import departementService from "@/services/departementService";
 import ajoutCandidatHeroImg from "@/assets/illustrations/ajout-etudiant-hero.png";
 
 const CYCLES: Cycle[] = ['INGENIEUR', 'SCIENCE_INGENIEUR', 'MASTER_PRO'];
@@ -25,22 +26,66 @@ export default function CandidatFormPage() {
   const { id } = useParams();
   const isEditing = Boolean(id);
 
-  const [formData, setFormData] = useState({
-    // CustomUser fields
+  const [formData, setFormData] = useState<CandidatFormData>({
     email: "",
     username: "",
     first_name: "",
     last_name: "",
     password: "",
     phone: "",
-    // CandidatProfile fields
     matricule: "",
-    cycle: "" as Cycle | "",
+    cycle: "INGENIEUR",
     departement_id: "",
-    specialite: "",
   });
+
+  const [departements, setDepartements] = useState<Departement[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
+  // Charger les départements
+  useEffect(() => {
+    const loadDepartements = async () => {
+      try {
+        const data = await departementService.getAll();
+        setDepartements(data);
+      } catch (error: any) {
+        console.error('Erreur lors du chargement des départements:', error);
+        toast.error('Erreur lors du chargement des départements');
+      }
+    };
+    loadDepartements();
+  }, []);
+
+  // Charger les données du candidat en mode édition
+  useEffect(() => {
+    if (isEditing && id) {
+      const loadCandidat = async () => {
+        setIsLoadingData(true);
+        try {
+          const candidat = await candidatService.getById(id);
+          setFormData({
+            email: candidat.user.email,
+            username: candidat.user.username,
+            first_name: candidat.user.first_name,
+            last_name: candidat.user.last_name,
+            password: "",
+            phone: candidat.user.phone || "",
+            matricule: candidat.matricule,
+            cycle: candidat.cycle,
+            departement_id: candidat.departement?.id || "",
+          });
+        } catch (error: any) {
+          console.error('Erreur lors du chargement du candidat:', error);
+          toast.error('Erreur lors du chargement du candidat');
+          navigate("/candidats");
+        } finally {
+          setIsLoadingData(false);
+        }
+      };
+      loadCandidat();
+    }
+  }, [isEditing, id, navigate]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -60,6 +105,8 @@ export default function CandidatFormPage() {
     }
     if (!isEditing && !formData.password.trim()) {
       newErrors.password = "Le mot de passe est requis";
+    } else if (formData.password && formData.password.length < 8) {
+      newErrors.password = "Le mot de passe doit contenir au minimum 8 caractères";
     }
     if (!formData.matricule.trim()) {
       newErrors.matricule = "Le matricule est requis";
@@ -70,24 +117,92 @@ export default function CandidatFormPage() {
     if (!formData.departement_id) {
       newErrors.departement_id = "Le département est requis";
     }
-    if (!formData.specialite.trim()) {
-      newErrors.specialite = "La spécialité est requise";
-    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+
+    if (!validate()) {
+      toast.error("Veuillez corriger les erreurs dans le formulaire");
+      return;
+    }
 
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setIsLoading(false);
 
-    toast.success(isEditing ? "Candidat modifié avec succès" : "Candidat créé avec succès");
-    navigate("/candidats");
+    try {
+      if (isEditing && id) {
+        // Mode édition
+        const updateData: Partial<CandidatFormData> = {
+          email: formData.email,
+          username: formData.username,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          phone: formData.phone,
+          matricule: formData.matricule,
+          cycle: formData.cycle,
+          departement_id: formData.departement_id,
+        };
+
+        // Ajouter le mot de passe seulement s'il est fourni
+        if (formData.password) {
+          updateData.password = formData.password;
+        }
+
+        await candidatService.update(id, updateData);
+        toast.success("Candidat modifié avec succès");
+      } else {
+        // Mode création
+        await candidatService.create(formData);
+        toast.success("Candidat créé avec succès");
+      }
+
+      navigate("/candidats");
+    } catch (error: any) {
+      console.error('Erreur lors de la sauvegarde:', error);
+
+      // Gérer les erreurs spécifiques du backend
+      if (error.response?.data) {
+        const backendErrors = error.response.data;
+
+        // Si c'est un objet d'erreurs de validation
+        if (typeof backendErrors === 'object') {
+          const newErrors: Record<string, string> = {};
+
+          Object.keys(backendErrors).forEach((key) => {
+            const errorMessages = backendErrors[key];
+            if (Array.isArray(errorMessages)) {
+              newErrors[key] = errorMessages[0];
+            } else if (typeof errorMessages === 'string') {
+              newErrors[key] = errorMessages;
+            }
+          });
+
+          setErrors(newErrors);
+          toast.error("Erreur de validation du formulaire");
+        } else {
+          toast.error(backendErrors.detail || "Erreur lors de la sauvegarde");
+        }
+      } else {
+        toast.error(
+          isEditing
+            ? "Erreur lors de la modification du candidat"
+            : "Erreur lors de la création du candidat"
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  if (isLoadingData) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -191,14 +306,16 @@ export default function CandidatFormPage() {
                   <Input
                     id="password"
                     type="password"
-                    placeholder={isEditing ? "Laisser vide pour ne pas modifier" : "********"}
+                    placeholder={isEditing ? "Laisser vide pour ne pas modifier" : "Min. 8 caractères"}
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     className={errors.password ? "border-destructive" : ""}
                   />
-                  {errors.password && (
+                  {errors.password ? (
                     <p className="text-sm text-destructive">{errors.password}</p>
-                  )}
+                  ) : !isEditing ? (
+                    <p className="text-xs text-muted-foreground">Minimum 8 caractères</p>
+                  ) : null}
                 </div>
 
                 <div className="space-y-2">
@@ -278,31 +395,15 @@ export default function CandidatFormPage() {
                     <SelectValue placeholder="Sélectionner un département" />
                   </SelectTrigger>
                   <SelectContent>
-                    {DEPARTMENTS.map((dept) => (
+                    {departements.map((dept) => (
                       <SelectItem key={dept.id} value={dept.id}>
-                        {dept.nom}
+                        {dept.code} - {dept.nom}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {errors.departement_id && (
                   <p className="text-sm text-destructive">{errors.departement_id}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="specialite">
-                  Spécialité <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="specialite"
-                  placeholder="Intelligence Artificielle, Réseaux, etc."
-                  value={formData.specialite}
-                  onChange={(e) => setFormData({ ...formData, specialite: e.target.value })}
-                  className={errors.specialite ? "border-destructive" : ""}
-                />
-                {errors.specialite && (
-                  <p className="text-sm text-destructive">{errors.specialite}</p>
                 )}
               </div>
             </div>
@@ -312,7 +413,8 @@ export default function CandidatFormPage() {
                 Annuler
               </Button>
               <Button type="submit" disabled={isLoading}>
-                <Save className="mr-2 h-4 w-4" />
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {!isLoading && <Save className="mr-2 h-4 w-4" />}
                 {isLoading ? "Enregistrement..." : "Enregistrer"}
               </Button>
             </div>

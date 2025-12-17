@@ -88,7 +88,7 @@ class CandidatProfile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(
         CustomUser,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='candidat_profile',
         verbose_name="Utilisateur"
     )

@@ -159,6 +159,20 @@ class SessionSoutenanceViewSet(viewsets.ModelViewSet):
     ordering_fields = ['date_ouverture', 'created_at']
     filterset_fields = ['statut', 'niveau_concerne', 'annee_academique']
 
+    def list(self, request, *args, **kwargs):
+        """Liste des sessions avec mise à jour auto du statut"""
+        # Mettre à jour les statuts avant de retourner la liste
+        for session in self.get_queryset():
+            session.update_status_auto()
+        return super().list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        """Récupérer une session avec mise à jour auto du statut"""
+        instance = self.get_object()
+        instance.update_status_auto()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
     def perform_create(self, serializer):
         """Enregistrer l'utilisateur qui a créé la session"""
         serializer.save(created_by=self.request.user)
@@ -166,9 +180,13 @@ class SessionSoutenanceViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def active(self, request):
         """Récupérer la session active actuelle"""
+        # Mettre à jour les statuts d'abord
+        for session in SessionSoutenance.objects.all():
+            session.update_status_auto()
+
         now = timezone.now()
         session = SessionSoutenance.objects.filter(
-            statut='OUVERT',
+            statut='EN_COURS',
             date_ouverture__lte=now,
             date_cloture__gte=now
         ).first()
@@ -362,11 +380,19 @@ class JuryViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'nom']
     filterset_fields = ['statut', 'session']
 
+    def get_queryset(self):
+        """Charger les relations pour optimiser les requêtes"""
+        return Jury.objects.select_related('session').prefetch_related(
+            'composition__enseignant__user',
+            'composition__enseignant__departements'
+        )
+
     def get_serializer_class(self):
         """Utiliser un serializer différent pour la liste"""
         if self.action == 'list':
             return JuryListSerializer
         return JurySerializer
+
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanManageJury])
     def valider(self, request, pk=None):

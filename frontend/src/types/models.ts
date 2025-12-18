@@ -74,6 +74,7 @@ export interface EnseignantProfile {
   id: string;
   user: CustomUser;
   user_id: string;
+  nom_complet?: string; // Ajouté pour SimpleEnseignantProfileSerializer
   grade: GradeEnseignant;
   departements: Departement[];
   created_at: string;
@@ -142,7 +143,7 @@ export interface Jury {
   nom: string;
   session: SessionSoutenance;
   session_id: string;
-  membres: MembreJury[];
+  composition: MembreJury[];
   statut: StatutJury;
   date_validation?: string;
   created_at: string;

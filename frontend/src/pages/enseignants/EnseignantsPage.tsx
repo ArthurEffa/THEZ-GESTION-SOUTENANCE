@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserCheck, Loader2 } from "lucide-react";
-import jurysHeroImage from "@/assets/illustrations/jurys-hero.png";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, Column } from "@/components/common/DataTable";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
@@ -146,35 +145,28 @@ export default function EnseignantsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <PageHeader
-          title="Enseignants"
-          description={`${enseignants.length} enseignant${enseignants.length > 1 ? 's' : ''} enregistré${enseignants.length > 1 ? 's' : ''}`}
-          icon={UserCheck}
-          action={{
-            label: "Ajouter un enseignant",
-            onClick: () => navigate("/enseignants/nouveau"),
-          }}
-        >
-          <Select value={filterGrade} onValueChange={setFilterGrade}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filtrer par grade" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les grades</SelectItem>
-              <SelectItem value="PROFESSEUR">Professeur</SelectItem>
-              <SelectItem value="MAITRE_CONF">Maître de Conférence</SelectItem>
-              <SelectItem value="CHARGE_COURS">Chargé de Cours</SelectItem>
-              <SelectItem value="ASSISTANT">Assistant</SelectItem>
-            </SelectContent>
-          </Select>
-        </PageHeader>
-        <img
-          src={jurysHeroImage}
-          alt="Illustration gestion des enseignants"
-          className="hidden lg:block w-48 opacity-90"
-        />
-      </div>
+      <PageHeader
+        title="Enseignants"
+        description={`${enseignants.length} enseignant${enseignants.length > 1 ? 's' : ''} enregistré${enseignants.length > 1 ? 's' : ''}`}
+        icon={UserCheck}
+        action={{
+          label: "Ajouter un enseignant",
+          onClick: () => navigate("/enseignants/nouveau"),
+        }}
+      >
+        <Select value={filterGrade} onValueChange={setFilterGrade}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Filtrer par grade" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les grades</SelectItem>
+            <SelectItem value="PROFESSEUR">Professeur</SelectItem>
+            <SelectItem value="MAITRE_CONF">Maître de Conférence</SelectItem>
+            <SelectItem value="CHARGE_COURS">Chargé de Cours</SelectItem>
+            <SelectItem value="ASSISTANT">Assistant</SelectItem>
+          </SelectContent>
+        </Select>
+      </PageHeader>
 
       <DataTable
         data={filteredEnseignants}

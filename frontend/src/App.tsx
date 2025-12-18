@@ -23,6 +23,8 @@ import CandidatsPage from "@/pages/candidats/CandidatsPage";
 import CandidatFormPage from "@/pages/candidats/CandidatFormPage";
 import SessionsPage from "@/pages/sessions/SessionsPage";
 import SessionFormPage from "@/pages/sessions/SessionFormPage";
+import JurysPage from "@/pages/jurys/JurysPage";
+import JuryFormPage from "@/pages/jurys/JuryFormPage";
 import SoutenancesPage from "@/pages/soutenances/SoutenancesPage";
 import SoutenanceFormPage from "@/pages/soutenances/SoutenanceFormPage";
 import SoutenanceDetailPage from "@/pages/soutenances/SoutenanceDetailPage";
@@ -164,6 +166,28 @@ function AppRoutes() {
         <Route path="/sessions/:id/modifier" element={
           <ProtectedRoute allowedRoles={["ADMIN"]}>
             <SessionFormPage />
+          </ProtectedRoute>
+        } />
+
+        {/* Jurys */}
+        <Route path="/jurys" element={
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
+            <JurysPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/jurys/nouveau" element={
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
+            <JuryFormPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/jurys/:id" element={
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
+            <JuryFormPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/jurys/:id/modifier" element={
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
+            <JuryFormPage />
           </ProtectedRoute>
         } />
 

@@ -518,6 +518,11 @@ class JurySerializer(serializers.ModelSerializer):
                 role=membre['role']
             )
 
+        # Recharger le jury avec ses relations
+        jury = Jury.objects.select_related('session').prefetch_related(
+            'composition__enseignant__user'
+        ).get(pk=jury.pk)
+
         return jury
 
 

@@ -12,6 +12,7 @@ import { SessionSoutenance, STATUT_SESSION_LABELS, StatutSession } from "@/types
 import { Loader2, Calendar, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import sessionHeroImage from "@/assets/illustrations/gestion-session-hero.png";
 
 const STATUT_COLORS: Record<StatutSession, string> = {
   OUVERT: "bg-green-100 text-green-800 border-green-200",
@@ -105,10 +106,11 @@ export default function SessionsPage() {
           </Button>
         </div>
         <div className="w-full lg:w-72 h-48 flex items-center justify-center">
-          <div className="text-center text-muted-foreground/50">
-            <Calendar className="h-24 w-24 mx-auto mb-2 text-muted-foreground/30" />
-            <span className="text-xs">Sessions académiques</span>
-          </div>
+          <img
+            src={sessionHeroImage}
+            alt="Illustration gestion des sessions"
+            className="max-w-full max-h-full object-contain"
+          />
         </div>
       </div>
 

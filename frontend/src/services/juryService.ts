@@ -4,7 +4,7 @@ import { Jury, MembreJury } from '@/types/models';
 export interface JuryFormData {
   nom: string;
   session_id: string;
-  membres: {
+  membres_data: {
     enseignant_id: string;
     role: 'PRESIDENT' | 'RAPPORTEUR' | 'ENCADREUR' | 'EXAMINATEUR';
   }[];
@@ -37,12 +37,7 @@ class JuryService {
    * Créer un nouveau jury
    */
   async create(data: JuryFormData): Promise<Jury> {
-    const response = await api.post('/jurys/', {
-      nom: data.nom,
-      session_id: data.session_id,
-      membres: data.membres,
-    });
-
+    const response = await api.post('/jurys/', data);
     return response.data;
   }
 

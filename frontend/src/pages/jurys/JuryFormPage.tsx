@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Save, Plus, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,30 +15,18 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { 
-  StatutJury, 
-  RoleMembreJury, 
-  STATUT_JURY_LABELS, 
-  ROLE_MEMBRE_JURY_LABELS 
+import juryService from "@/services/juryService";
+import enseignantService from "@/services/enseignantService";
+import sessionService from "@/services/sessionService";
+import {
+  StatutJury,
+  RoleMembreJury,
+  STATUT_JURY_LABELS,
+  ROLE_MEMBRE_JURY_LABELS
 } from "@/types/models";
 
 const STATUTS_JURY: StatutJury[] = ['PROPOSE', 'VALIDE', 'ACTIF'];
 const ROLES_MEMBRE: RoleMembreJury[] = ['PRESIDENT', 'RAPPORTEUR', 'ENCADREUR', 'EXAMINATEUR'];
-
-// Demo data - enseignants disponibles
-const enseignantsDisponibles = [
-  { id: "1", nom: "Jean Dupont", grade: "Professeur", specialite: "IA" },
-  { id: "2", nom: "Marie Martin", grade: "Maître de Conférence", specialite: "Réseaux" },
-  { id: "3", nom: "Paul Bernard", grade: "Chargé de Cours", specialite: "Cybersécurité" },
-  { id: "4", nom: "Sophie Lefebvre", grade: "Professeur", specialite: "BDD" },
-  { id: "5", nom: "Pierre Durand", grade: "Assistant", specialite: "Systèmes embarqués" },
-];
-
-// Demo data - sessions disponibles
-const sessionsDisponibles = [
-  { id: "1", titre: "Session Master 2024-2025", annee: "2024-2025" },
-  { id: "2", titre: "Session Licence 2024-2025", annee: "2024-2025" },
-];
 
 interface MembreJuryForm {
   enseignant_id: string;
@@ -48,15 +37,75 @@ export default function JuryFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = Boolean(id);
+  const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
     nom: "",
     session_id: "",
     statut: "PROPOSE" as StatutJury,
-    membres: [] as MembreJuryForm[],
+    membres_data: [] as MembreJuryForm[],
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Charger les enseignants disponibles
+  const { data: enseignants = [], isLoading: isLoadingEnseignants } = useQuery({
+    queryKey: ['enseignants'],
+    queryFn: () => enseignantService.getAll(),
+  });
+
+  // Charger les sessions disponibles (uniquement ouvertes)
+  const { data: sessions = [], isLoading: isLoadingSessions } = useQuery({
+    queryKey: ['sessions', 'open'],
+    queryFn: () => sessionService.getAll({ statut: 'OUVERT' }),
+  });
+
+  // Charger les données du jury si édition
+  const { data: jury, isLoading: isLoadingJury } = useQuery({
+    queryKey: ['jury', id],
+    queryFn: () => juryService.getById(id!),
+    enabled: isEditing,
+  });
+
+  // Remplir le formulaire avec les données chargées
+  useEffect(() => {
+    if (jury) {
+      setFormData({
+        nom: jury.nom,
+        session_id: jury.session_id,
+        statut: jury.statut,
+        membres_data: jury.composition?.map(m => ({
+          enseignant_id: m.enseignant_id,
+          role: m.role,
+        })) || [],
+      });
+    }
+  }, [jury]);
+
+  // Mutation pour créer/modifier
+  const mutation = useMutation({
+    mutationFn: (data: typeof formData) => {
+      if (isEditing) {
+        // Pour l'édition, on ne peut changer que le nom et la session
+        return juryService.update(id!, {
+          nom: data.nom,
+          session_id: data.session_id,
+        });
+      } else {
+        return juryService.create(data);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jurys'] });
+      toast.success(isEditing ? "Jury modifié avec succès" : "Jury créé avec succès");
+      navigate("/jurys");
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.detail ||
+                     error?.response?.data?.message ||
+                     "Erreur lors de la sauvegarde";
+      toast.error(message);
+    },
+  });
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -66,11 +115,11 @@ export default function JuryFormPage() {
     if (!formData.session_id) {
       newErrors.session_id = "La session est requise";
     }
-    if (formData.membres.length === 0) {
+    if (!isEditing && formData.membres_data.length === 0) {
       newErrors.membres = "Au moins un membre est requis";
     }
     // Vérifier que chaque membre a un enseignant et un rôle
-    formData.membres.forEach((membre, index) => {
+    formData.membres_data.forEach((membre, index) => {
       if (!membre.enseignant_id) {
         newErrors[`membre_${index}_enseignant`] = "Enseignant requis";
       }
@@ -79,8 +128,8 @@ export default function JuryFormPage() {
       }
     });
     // Vérifier qu'il y a un président
-    const hasPresident = formData.membres.some((m) => m.role === "PRESIDENT");
-    if (formData.membres.length > 0 && !hasPresident) {
+    const hasPresident = formData.membres_data.some((m) => m.role === "PRESIDENT");
+    if (!isEditing && formData.membres_data.length > 0 && !hasPresident) {
       newErrors.president = "Le jury doit avoir un président";
     }
     setErrors(newErrors);
@@ -90,38 +139,37 @@ export default function JuryFormPage() {
   const handleAddMembre = () => {
     setFormData({
       ...formData,
-      membres: [...formData.membres, { enseignant_id: "", role: "" }],
+      membres_data: [...formData.membres_data, { enseignant_id: "", role: "" }],
     });
   };
 
   const handleRemoveMembre = (index: number) => {
     setFormData({
       ...formData,
-      membres: formData.membres.filter((_, i) => i !== index),
+      membres_data: formData.membres_data.filter((_, i) => i !== index),
     });
   };
 
   const handleMembreChange = (index: number, field: keyof MembreJuryForm, value: string) => {
-    const newMembres = [...formData.membres];
+    const newMembres = [...formData.membres_data];
     newMembres[index] = { ...newMembres[index], [field]: value };
-    setFormData({ ...formData, membres: newMembres });
-  };
-
-  const getEnseignantName = (id: string) => {
-    return enseignantsDisponibles.find((e) => e.id === id)?.nom || "";
+    setFormData({ ...formData, membres_data: newMembres });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setIsLoading(false);
-
-    toast.success(isEditing ? "Jury modifié avec succès" : "Jury créé avec succès");
-    navigate("/jurys");
+    mutation.mutate(formData);
   };
+
+  if (isLoadingJury || isLoadingEnseignants || isLoadingSessions) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -174,7 +222,7 @@ export default function JuryFormPage() {
                       <SelectValue placeholder="Sélectionner une session" />
                     </SelectTrigger>
                     <SelectContent>
-                      {sessionsDisponibles.map((session) => (
+                      {sessions.map((session) => (
                         <SelectItem key={session.id} value={session.id}>
                           {session.titre}
                         </SelectItem>
@@ -219,7 +267,7 @@ export default function JuryFormPage() {
                 <p className="text-sm text-destructive">{errors.president}</p>
               )}
 
-              {formData.membres.map((membre, index) => (
+              {formData.membres_data.map((membre, index) => (
                 <div key={index} className="flex gap-3 items-start p-3 border rounded-lg">
                   <div className="flex-1 grid gap-3 md:grid-cols-2">
                     <div className="space-y-2">
@@ -232,16 +280,16 @@ export default function JuryFormPage() {
                           <SelectValue placeholder="Sélectionner" />
                         </SelectTrigger>
                         <SelectContent>
-                          {enseignantsDisponibles
+                          {enseignants
                             .filter(
                               (e) =>
-                                !formData.membres.some(
+                                !formData.membres_data.some(
                                   (m, i) => i !== index && m.enseignant_id === e.id
                                 )
                             )
                             .map((enseignant) => (
                               <SelectItem key={enseignant.id} value={enseignant.id}>
-                                {enseignant.nom} - {enseignant.grade}
+                                {enseignant.user.first_name} {enseignant.user.last_name} - {enseignant.grade}
                               </SelectItem>
                             ))}
                         </SelectContent>
@@ -258,11 +306,19 @@ export default function JuryFormPage() {
                           <SelectValue placeholder="Sélectionner" />
                         </SelectTrigger>
                         <SelectContent>
-                          {ROLES_MEMBRE.map((role) => (
-                            <SelectItem key={role} value={role}>
-                              {ROLE_MEMBRE_JURY_LABELS[role]}
-                            </SelectItem>
-                          ))}
+                          {ROLES_MEMBRE
+                            .filter(
+                              (role) =>
+                                // Afficher le rôle s'il n'est pas encore utilisé, ou si c'est le rôle actuel du membre
+                                !formData.membres_data.some(
+                                  (m, i) => i !== index && m.role === role
+                                )
+                            )
+                            .map((role) => (
+                              <SelectItem key={role} value={role}>
+                                {ROLE_MEMBRE_JURY_LABELS[role]}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -291,9 +347,18 @@ export default function JuryFormPage() {
             <Button type="button" variant="outline" onClick={() => navigate("/jurys")}>
               Annuler
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              <Save className="mr-2 h-4 w-4" />
-              {isLoading ? "Enregistrement..." : "Enregistrer"}
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Enregistrement...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Enregistrer
+                </>
+              )}
             </Button>
           </div>
         </form>

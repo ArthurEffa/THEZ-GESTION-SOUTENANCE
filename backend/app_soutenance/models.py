@@ -209,6 +209,30 @@ class SessionSoutenance(models.Model):
     def __str__(self):
         return f"{self.titre} ({self.annee_academique})"
 
+    def update_status_auto(self):
+        """
+        Met à jour automatiquement le statut de la session en fonction des dates
+        """
+        from django.utils import timezone
+        now = timezone.now()
+
+        # Logique de mise à jour du statut
+        if now < self.date_ouverture:
+            # La session n'a pas encore commencé
+            if self.statut not in [self.Statut.OUVERT, self.Statut.FERME]:
+                self.statut = self.Statut.FERME
+                self.save(update_fields=['statut'])
+        elif self.date_ouverture <= now < self.date_cloture:
+            # La session est en cours
+            if self.statut != self.Statut.EN_COURS:
+                self.statut = self.Statut.EN_COURS
+                self.save(update_fields=['statut'])
+        else:  # now >= self.date_cloture
+            # La session est terminée
+            if self.statut != self.Statut.TERMINE:
+                self.statut = self.Statut.TERMINE
+                self.save(update_fields=['statut'])
+
 
 class Salle(models.Model):
     """

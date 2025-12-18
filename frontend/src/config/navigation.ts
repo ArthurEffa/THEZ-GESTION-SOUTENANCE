@@ -9,6 +9,7 @@ import {
   FolderOpen,
   ClipboardList,
   CalendarClock,
+  Scale,
   LucideIcon
 } from "lucide-react";
 import { UserRole } from "@/contexts/AuthContext";
@@ -58,6 +59,12 @@ export const navigationItems: NavigationItem[] = [
     title: "Sessions",
     url: "/sessions",
     icon: CalendarClock,
+    roles: ["ADMIN"],
+  },
+  {
+    title: "Jurys",
+    url: "/jurys",
+    icon: Scale,
     roles: ["ADMIN"],
   },
   {

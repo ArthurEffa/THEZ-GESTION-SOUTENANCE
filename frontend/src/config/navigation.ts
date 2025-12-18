@@ -1,13 +1,14 @@
-import { 
-  LayoutDashboard, 
-  GraduationCap, 
-  Building2, 
-  Users, 
+import {
+  LayoutDashboard,
+  GraduationCap,
+  Building2,
+  Users,
   UserCheck,
   Calendar,
   FileText,
   FolderOpen,
   ClipboardList,
+  CalendarClock,
   LucideIcon
 } from "lucide-react";
 import { UserRole } from "@/contexts/AuthContext";
@@ -51,6 +52,12 @@ export const navigationItems: NavigationItem[] = [
     title: "Candidats",
     url: "/candidats",
     icon: Users,
+    roles: ["ADMIN"],
+  },
+  {
+    title: "Sessions",
+    url: "/sessions",
+    icon: CalendarClock,
     roles: ["ADMIN"],
   },
   {

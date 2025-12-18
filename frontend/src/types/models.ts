@@ -91,6 +91,8 @@ export interface SessionSoutenance {
   description?: string;
   created_by_id?: string;
   created_by?: CustomUser;
+  nb_dossiers?: number;
+  nb_soutenances?: number;
   created_at: string;
   updated_at: string;
 }

@@ -371,7 +371,9 @@ class SessionSoutenanceSerializer(serializers.ModelSerializer):
         return obj.dossiers.count()
 
     def get_nb_soutenances(self, obj):
-        return obj.soutenances.count()
+        # Compter les soutenances via les dossiers de cette session
+        from .models import Soutenance
+        return Soutenance.objects.filter(dossier__session=obj).count()
 
 
 class SalleSerializer(serializers.ModelSerializer):

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import sessionService from "@/services/sessionService";
 import {
   StatutSession,
   Cycle,
@@ -28,6 +30,7 @@ export default function SessionFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = Boolean(id);
+  const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
     titre: "",
@@ -39,7 +42,55 @@ export default function SessionFormPage() {
     description: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Charger les données si édition
+  const { data: session, isLoading: isLoadingSession } = useQuery({
+    queryKey: ['session', id],
+    queryFn: () => sessionService.getById(id!),
+    enabled: isEditing,
+  });
+
+  // Remplir le formulaire avec les données chargées
+  useEffect(() => {
+    if (session) {
+      setFormData({
+        titre: session.titre,
+        annee_academique: session.annee_academique,
+        date_ouverture: session.date_ouverture.slice(0, 16), // Format datetime-local
+        date_cloture: session.date_cloture.slice(0, 16),
+        niveau_concerne: session.niveau_concerne as Cycle,
+        statut: session.statut,
+        description: session.description || "",
+      });
+    }
+  }, [session]);
+
+  // Mutation pour créer/modifier
+  const mutation = useMutation({
+    mutationFn: (data: typeof formData) => {
+      // Convertir les dates locales en ISO
+      const submitData = {
+        ...data,
+        date_ouverture: new Date(data.date_ouverture).toISOString(),
+        date_cloture: new Date(data.date_cloture).toISOString(),
+      };
+
+      return isEditing
+        ? sessionService.update(id!, submitData)
+        : sessionService.create(submitData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      toast.success(isEditing ? "Session modifiée avec succès" : "Session créée avec succès");
+      navigate("/sessions");
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.detail ||
+                     error?.response?.data?.message ||
+                     "Erreur lors de la sauvegarde";
+      toast.error(message);
+    },
+  });
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -69,13 +120,16 @@ export default function SessionFormPage() {
     e.preventDefault();
     if (!validate()) return;
 
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setIsLoading(false);
-
-    toast.success(isEditing ? "Session modifiée avec succès" : "Session créée avec succès");
-    navigate("/sessions");
+    mutation.mutate(formData);
   };
+
+  if (isLoadingSession) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -216,9 +270,18 @@ export default function SessionFormPage() {
               <Button type="button" variant="outline" onClick={() => navigate("/sessions")}>
                 Annuler
               </Button>
-              <Button type="submit" disabled={isLoading}>
-                <Save className="mr-2 h-4 w-4" />
-                {isLoading ? "Enregistrement..." : "Enregistrer"}
+              <Button type="submit" disabled={mutation.isPending}>
+                {mutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enregistrement...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Enregistrer
+                  </>
+                )}
               </Button>
             </div>
           </form>

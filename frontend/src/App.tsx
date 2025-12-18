@@ -21,6 +21,7 @@ import EnseignantsPage from "@/pages/enseignants/EnseignantsPage";
 import EnseignantFormPage from "@/pages/enseignants/EnseignantFormPage";
 import CandidatsPage from "@/pages/candidats/CandidatsPage";
 import CandidatFormPage from "@/pages/candidats/CandidatFormPage";
+import SessionsPage from "@/pages/sessions/SessionsPage";
 import SessionFormPage from "@/pages/sessions/SessionFormPage";
 import SoutenancesPage from "@/pages/soutenances/SoutenancesPage";
 import SoutenanceFormPage from "@/pages/soutenances/SoutenanceFormPage";
@@ -145,7 +146,17 @@ function AppRoutes() {
         } />
 
         {/* Sessions */}
+        <Route path="/sessions" element={
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
+            <SessionsPage />
+          </ProtectedRoute>
+        } />
         <Route path="/sessions/nouveau" element={
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
+            <SessionFormPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/sessions/:id" element={
           <ProtectedRoute allowedRoles={["ADMIN"]}>
             <SessionFormPage />
           </ProtectedRoute>

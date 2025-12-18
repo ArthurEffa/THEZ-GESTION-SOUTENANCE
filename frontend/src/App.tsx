@@ -19,12 +19,15 @@ import SallesPage from "@/pages/salles/SallesPage";
 import SalleFormPage from "@/pages/salles/SalleFormPage";
 import EnseignantsPage from "@/pages/enseignants/EnseignantsPage";
 import EnseignantFormPage from "@/pages/enseignants/EnseignantFormPage";
+import EnseignantDetailPage from "@/pages/enseignants/EnseignantDetailPage";
 import CandidatsPage from "@/pages/candidats/CandidatsPage";
 import CandidatFormPage from "@/pages/candidats/CandidatFormPage";
+import CandidatDetailPage from "@/pages/candidats/CandidatDetailPage";
 import SessionsPage from "@/pages/sessions/SessionsPage";
 import SessionFormPage from "@/pages/sessions/SessionFormPage";
 import JurysPage from "@/pages/jurys/JurysPage";
 import JuryFormPage from "@/pages/jurys/JuryFormPage";
+import DossierDetailPage from "@/pages/dossiers/DossierDetailPage";
 import SoutenancesPage from "@/pages/soutenances/SoutenancesPage";
 import SoutenanceFormPage from "@/pages/soutenances/SoutenanceFormPage";
 import SoutenanceDetailPage from "@/pages/soutenances/SoutenanceDetailPage";
@@ -117,7 +120,7 @@ function AppRoutes() {
         } />
         <Route path="/enseignants/:id" element={
           <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <EnseignantFormPage />
+            <EnseignantDetailPage />
           </ProtectedRoute>
         } />
         <Route path="/enseignants/:id/modifier" element={
@@ -138,7 +141,7 @@ function AppRoutes() {
         } />
         <Route path="/candidats/:id" element={
           <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <CandidatFormPage />
+            <CandidatDetailPage />
           </ProtectedRoute>
         } />
         <Route path="/candidats/:id/modifier" element={
@@ -188,6 +191,13 @@ function AppRoutes() {
         <Route path="/jurys/:id/modifier" element={
           <ProtectedRoute allowedRoles={["ADMIN"]}>
             <JuryFormPage />
+          </ProtectedRoute>
+        } />
+
+        {/* Dossiers */}
+        <Route path="/dossiers/:id" element={
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
+            <DossierDetailPage />
           </ProtectedRoute>
         } />
 

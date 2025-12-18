@@ -95,6 +95,7 @@ export default function CandidatsPage() {
         <a
           href={`mailto:${candidat.user.email}`}
           className="text-primary hover:underline"
+          onClick={(e) => e.stopPropagation()}
         >
           {candidat.user.email}
         </a>
@@ -113,6 +114,18 @@ export default function CandidatsPage() {
       render: (candidat) => (
         <Badge variant="secondary">
           {candidat.departement ? candidat.departement.nom : "Non assigné"}
+        </Badge>
+      ),
+    },
+    {
+      key: "has_dossier",
+      header: "Dossier",
+      render: (candidat) => (
+        <Badge
+          variant={candidat.has_dossier ? "default" : "outline"}
+          className={candidat.has_dossier ? "bg-green-100 text-green-800 border-green-200" : ""}
+        >
+          {candidat.has_dossier ? "Oui" : "Non"}
         </Badge>
       ),
     },

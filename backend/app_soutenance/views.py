@@ -226,7 +226,7 @@ class DossierSoutenanceViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['titre_memoire', 'candidat__matricule', 'candidat__user__last_name']
     ordering_fields = ['date_depot', 'created_at']
-    filterset_fields = ['statut', 'session', 'candidat__cycle', 'demande_suppression']
+    filterset_fields = ['statut', 'session', 'candidat', 'candidat__cycle', 'demande_suppression']
 
     def get_serializer_class(self):
         """Utiliser un serializer différent pour la liste"""
@@ -250,13 +250,18 @@ class DossierSoutenanceViewSet(viewsets.ModelViewSet):
         return DossierSoutenance.objects.none()
 
     def perform_create(self, serializer):
-        """Associer automatiquement le candidat connecté - seuls les candidats peuvent créer"""
+        """Associer automatiquement le candidat connecté ou permettre à l'admin de spécifier le candidat"""
         if self.request.user.role == 'CANDIDAT':
+            # Le candidat crée son propre dossier
             serializer.save(candidat=self.request.user.candidat_profile)
+        elif self.request.user.role == 'ADMIN':
+            # L'admin peut créer un dossier pour un candidat spécifique
+            # Le candidat_id doit être fourni dans les données
+            serializer.save()
         else:
-            # Seuls les candidats peuvent créer des dossiers
+            # Les enseignants ne peuvent pas créer de dossiers
             from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("Seuls les candidats peuvent créer des dossiers de soutenance.")
+            raise PermissionDenied("Vous n'avez pas la permission de créer des dossiers de soutenance.")
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanValidateDossier])
     def valider(self, request, pk=None):

@@ -116,33 +116,33 @@ export function DataTable<T extends { id: string | number }>({
               </TableRow>
             ) : (
               paginatedData.map((item) => (
-                <TableRow key={item.id} className="table-row-hover">
+                <TableRow
+                  key={item.id}
+                  className={cn(
+                    "table-row-hover",
+                    onView && "cursor-pointer"
+                  )}
+                  onClick={() => onView && onView(item)}
+                >
                   {columns.map((column) => (
                     <TableCell key={String(column.key)} className={column.className}>
-                      {column.render 
-                        ? column.render(item) 
+                      {column.render
+                        ? column.render(item)
                         : String(item[column.key as keyof T] ?? "")}
                     </TableCell>
                   ))}
                   {hasActions && (
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {onView && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-primary"
-                            onClick={() => onView(item)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        )}
                         {onEdit && (
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-primary"
-                            onClick={() => onEdit(item)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEdit(item);
+                            }}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -152,7 +152,10 @@ export function DataTable<T extends { id: string | number }>({
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={() => onDelete(item)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDelete(item);
+                            }}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

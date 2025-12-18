@@ -153,6 +153,7 @@ class CandidatProfileSerializer(serializers.ModelSerializer):
     """Serializer pour le profil Candidat"""
     user = CustomUserSerializer(read_only=True)
     departement = DepartementSerializer(read_only=True)
+    has_dossier = serializers.SerializerMethodField()
 
     # Champs pour créer l'utilisateur en même temps (write_only)
     email = serializers.EmailField(write_only=True, required=True)
@@ -172,9 +173,14 @@ class CandidatProfileSerializer(serializers.ModelSerializer):
             'email', 'first_name', 'last_name', 'password', 'username', 'phone',
             # Champs profil candidat
             'matricule', 'cycle', 'departement', 'departement_id', 'photo',
+            'has_dossier',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_has_dossier(self, obj):
+        """Indique si le candidat a au moins un dossier"""
+        return obj.dossiers.exists()
 
     def create(self, validated_data):
         """Créer un utilisateur ET son profil candidat en une seule opération"""

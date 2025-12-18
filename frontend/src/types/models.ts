@@ -66,6 +66,7 @@ export interface CandidatProfile {
   departement?: Departement;
   departement_id?: string;
   photo?: string;
+  has_dossier: boolean;
   created_at: string;
   updated_at: string;
 }

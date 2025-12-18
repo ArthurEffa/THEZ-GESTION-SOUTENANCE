@@ -75,6 +75,7 @@ export default function EnseignantsPage() {
         <a
           href={`mailto:${enseignant.user.email}`}
           className="text-primary hover:underline"
+          onClick={(e) => e.stopPropagation()}
         >
           {enseignant.user.email}
         </a>

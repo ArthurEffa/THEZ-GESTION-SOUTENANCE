@@ -238,7 +238,15 @@ class EnseignantProfileSerializer(serializers.ModelSerializer):
     """Serializer pour le profil Enseignant"""
     user = CustomUserSerializer(read_only=True)
     departements = DepartementSerializer(many=True, read_only=True)
-    user_email = serializers.EmailField(write_only=True, required=False)
+
+    # Champs pour créer l'utilisateur en même temps (write_only)
+    email = serializers.EmailField(write_only=True, required=True)
+    first_name = serializers.CharField(write_only=True, required=True)
+    last_name = serializers.CharField(write_only=True, required=True)
+    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    username = serializers.CharField(write_only=True, required=False)
+    phone = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
     departement_ids = serializers.ListField(
         child=serializers.UUIDField(),
         write_only=True,
@@ -247,23 +255,82 @@ class EnseignantProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EnseignantProfile
-        fields = ['id', 'user', 'user_email', 'grade', 'departements', 'departement_ids', 'created_at', 'updated_at']
+        fields = [
+            'id', 'user',
+            # Champs utilisateur (write_only pour création)
+            'email', 'first_name', 'last_name', 'password', 'username', 'phone',
+            # Champs profil enseignant
+            'grade', 'departements', 'departement_ids',
+            'created_at', 'updated_at'
+        ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def create(self, validated_data):
+        """Créer un utilisateur ET son profil enseignant en une seule opération"""
+        # Extraire les données utilisateur
+        email = validated_data.pop('email')
+        first_name = validated_data.pop('first_name')
+        last_name = validated_data.pop('last_name')
+        password = validated_data.pop('password')
+        username = validated_data.pop('username', email.split('@')[0])
+        phone = validated_data.pop('phone', '')
         departement_ids = validated_data.pop('departement_ids', [])
-        enseignant = EnseignantProfile.objects.create(**validated_data)
+
+        # Vérifier si l'email existe déjà
+        if CustomUser.objects.filter(email=email).exists():
+            raise serializers.ValidationError({"email": "Cet email est déjà utilisé"})
+
+        # Créer l'utilisateur avec role ENSEIGNANT
+        user = CustomUser.objects.create_user(
+            email=email,
+            username=username,
+            first_name=first_name,
+            last_name=last_name,
+            password=password,
+            phone=phone,
+            role='ENSEIGNANT'
+        )
+
+        # Créer le profil enseignant
+        enseignant = EnseignantProfile.objects.create(user=user, **validated_data)
+
+        # Assigner les départements
         if departement_ids:
             enseignant.departements.set(departement_ids)
+
         return enseignant
 
     def update(self, instance, validated_data):
+        """Mettre à jour un profil enseignant et ses données utilisateur"""
+        # Extraire les données utilisateur si présentes
+        email = validated_data.pop('email', None)
+        first_name = validated_data.pop('first_name', None)
+        last_name = validated_data.pop('last_name', None)
+        password = validated_data.pop('password', None)
+        username = validated_data.pop('username', None)
+        phone = validated_data.pop('phone', None)
         departement_ids = validated_data.pop('departement_ids', None)
+
+        # Mettre à jour l'utilisateur
+        if email: instance.user.email = email
+        if first_name: instance.user.first_name = first_name
+        if last_name: instance.user.last_name = last_name
+        if username: instance.user.username = username
+        if phone is not None: instance.user.phone = phone
+        if password: instance.user.set_password(password)
+
+        if any([email, first_name, last_name, username, phone, password]):
+            instance.user.save()
+
+        # Mettre à jour le profil
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
+
+        # Mettre à jour les départements
         if departement_ids is not None:
             instance.departements.set(departement_ids)
+
         return instance
 
 

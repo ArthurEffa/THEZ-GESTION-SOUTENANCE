@@ -42,8 +42,8 @@ export const navigationItems: NavigationItem[] = [
     roles: ["ADMIN"],
   },
   {
-    title: "Jurys",
-    url: "/jurys",
+    title: "Enseignants",
+    url: "/enseignants",
     icon: UserCheck,
     roles: ["ADMIN"],
   },

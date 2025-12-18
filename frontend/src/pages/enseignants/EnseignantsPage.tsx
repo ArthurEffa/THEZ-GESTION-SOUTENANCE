@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { EnseignantProfile, GRADE_ENSEIGNANT_LABELS } from "@/types/models";
 import enseignantService from "@/services/enseignantService";
 
-export default function JurysPage() {
+export default function EnseignantsPage() {
   const navigate = useNavigate();
 
   // États

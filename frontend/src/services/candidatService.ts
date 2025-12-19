@@ -1,3 +1,4 @@
+
 import api from '@/lib/api';
 import { CandidatProfile } from '@/types/models';
 
@@ -41,6 +42,14 @@ class CandidatService {
   async getAll(): Promise<CandidatProfile[]> {
     const response = await api.get('/candidats/');
     // L'API retourne un objet paginé {count, next, prev, results}
+    return response.data.results || response.data;
+  }
+
+  /**
+   * Récupérer les candidats d'un département spécifique
+   */
+  async getByDepartement(departementId: string): Promise<CandidatProfile[]> {
+    const response = await api.get(`/candidats/?departement=${departementId}`);
     return response.data.results || response.data;
   }
 

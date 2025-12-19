@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,8 +16,10 @@ import NotFound from "@/pages/NotFound";
 // Pages Admin
 import DepartementsPage from "@/pages/departements/DepartementsPage";
 import DepartementFormPage from "@/pages/departements/DepartementFormPage";
+import DepartementDetailPage from "@/pages/departements/DepartementDetailPage";
 import SallesPage from "@/pages/salles/SallesPage";
 import SalleFormPage from "@/pages/salles/SalleFormPage";
+import SalleDetailPage from "@/pages/salles/SalleDetailPage";
 import EnseignantsPage from "@/pages/enseignants/EnseignantsPage";
 import EnseignantFormPage from "@/pages/enseignants/EnseignantFormPage";
 import EnseignantDetailPage from "@/pages/enseignants/EnseignantDetailPage";
@@ -25,8 +28,10 @@ import CandidatFormPage from "@/pages/candidats/CandidatFormPage";
 import CandidatDetailPage from "@/pages/candidats/CandidatDetailPage";
 import SessionsPage from "@/pages/sessions/SessionsPage";
 import SessionFormPage from "@/pages/sessions/SessionFormPage";
+import SessionDetailPage from "@/pages/sessions/SessionDetailPage";
 import JurysPage from "@/pages/jurys/JurysPage";
 import JuryFormPage from "@/pages/jurys/JuryFormPage";
+import JuryDetailPage from "@/pages/jurys/JuryDetailPage"; // Import de la nouvelle page
 import DossierDetailPage from "@/pages/dossiers/DossierDetailPage";
 import SoutenancesPage from "@/pages/soutenances/SoutenancesPage";
 import SoutenanceFormPage from "@/pages/soutenances/SoutenanceFormPage";
@@ -66,195 +71,52 @@ function AppRoutes() {
         <Route path="/" element={<DashboardRouter />} />
         
         {/* === ROUTES ADMIN UNIQUEMENT === */}
-        <Route path="/departements" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <DepartementsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/departements/nouveau" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <DepartementFormPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/departements/:id" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <DepartementFormPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/departements/:id/modifier" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <DepartementFormPage />
-          </ProtectedRoute>
-        } />
+        <Route path="/departements" element={<ProtectedRoute allowedRoles={["ADMIN"]}><DepartementsPage /></ProtectedRoute>} />
+        <Route path="/departements/nouveau" element={<ProtectedRoute allowedRoles={["ADMIN"]}><DepartementFormPage /></ProtectedRoute>} />
+        <Route path="/departements/:id" element={<ProtectedRoute allowedRoles={["ADMIN"]}><DepartementDetailPage /></ProtectedRoute>} />
+        <Route path="/departements/:id/modifier" element={<ProtectedRoute allowedRoles={["ADMIN"]}><DepartementFormPage /></ProtectedRoute>} />
 
-        <Route path="/salles" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <SallesPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/salles/nouveau" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <SalleFormPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/salles/:id" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <SalleFormPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/salles/:id/modifier" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <SalleFormPage />
-          </ProtectedRoute>
-        } />
+        <Route path="/salles" element={<ProtectedRoute allowedRoles={["ADMIN"]}><SallesPage /></ProtectedRoute>} />
+        <Route path="/salles/nouveau" element={<ProtectedRoute allowedRoles={["ADMIN"]}><SalleFormPage /></ProtectedRoute>} />
+        <Route path="/salles/:id" element={<ProtectedRoute allowedRoles={["ADMIN"]}><SalleDetailPage /></ProtectedRoute>} />
+        <Route path="/salles/:id/modifier" element={<ProtectedRoute allowedRoles={["ADMIN"]}><SalleFormPage /></ProtectedRoute>} />
 
-        <Route path="/enseignants" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <EnseignantsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/enseignants/nouveau" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <EnseignantFormPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/enseignants/:id" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <EnseignantDetailPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/enseignants/:id/modifier" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <EnseignantFormPage />
-          </ProtectedRoute>
-        } />
+        <Route path="/enseignants" element={<ProtectedRoute allowedRoles={["ADMIN"]}><EnseignantsPage /></ProtectedRoute>} />
+        <Route path="/enseignants/nouveau" element={<ProtectedRoute allowedRoles={["ADMIN"]}><EnseignantFormPage /></ProtectedRoute>} />
+        <Route path="/enseignants/:id" element={<ProtectedRoute allowedRoles={["ADMIN"]}><EnseignantDetailPage /></ProtectedRoute>} />
+        <Route path="/enseignants/:id/modifier" element={<ProtectedRoute allowedRoles={["ADMIN"]}><EnseignantFormPage /></ProtectedRoute>} />
 
-        <Route path="/candidats" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <CandidatsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/candidats/nouveau" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <CandidatFormPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/candidats/:id" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <CandidatDetailPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/candidats/:id/modifier" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <CandidatFormPage />
-          </ProtectedRoute>
-        } />
+        <Route path="/candidats" element={<ProtectedRoute allowedRoles={["ADMIN"]}><CandidatsPage /></ProtectedRoute>} />
+        <Route path="/candidats/nouveau" element={<ProtectedRoute allowedRoles={["ADMIN"]}><CandidatFormPage /></ProtectedRoute>} />
+        <Route path="/candidats/:id" element={<ProtectedRoute allowedRoles={["ADMIN"]}><CandidatDetailPage /></ProtectedRoute>} />
+        <Route path="/candidats/:id/modifier" element={<ProtectedRoute allowedRoles={["ADMIN"]}><CandidatFormPage /></ProtectedRoute>} />
 
-        {/* Sessions */}
-        <Route path="/sessions" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <SessionsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/sessions/nouveau" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <SessionFormPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/sessions/:id" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <SessionFormPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/sessions/:id/modifier" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <SessionFormPage />
-          </ProtectedRoute>
-        } />
+        <Route path="/sessions" element={<ProtectedRoute allowedRoles={["ADMIN"]}><SessionsPage /></ProtectedRoute>} />
+        <Route path="/sessions/nouveau" element={<ProtectedRoute allowedRoles={["ADMIN"]}><SessionFormPage /></ProtectedRoute>} />
+        <Route path="/sessions/:id" element={<ProtectedRoute allowedRoles={["ADMIN"]}><SessionDetailPage /></ProtectedRoute>} />
+        <Route path="/sessions/:id/modifier" element={<ProtectedRoute allowedRoles={["ADMIN"]}><SessionFormPage /></ProtectedRoute>} />
 
-        {/* Jurys */}
-        <Route path="/jurys" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <JurysPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/jurys/nouveau" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <JuryFormPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/jurys/:id" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <JuryFormPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/jurys/:id/modifier" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <JuryFormPage />
-          </ProtectedRoute>
-        } />
+        <Route path="/jurys" element={<ProtectedRoute allowedRoles={["ADMIN"]}><JurysPage /></ProtectedRoute>} />
+        <Route path="/jurys/nouveau" element={<ProtectedRoute allowedRoles={["ADMIN"]}><JuryFormPage /></ProtectedRoute>} />
+        <Route path="/jurys/:id" element={<ProtectedRoute allowedRoles={["ADMIN"]}><JuryDetailPage /></ProtectedRoute>} />
+        <Route path="/jurys/:id/modifier" element={<ProtectedRoute allowedRoles={["ADMIN"]}><JuryFormPage /></ProtectedRoute>} />
 
-        {/* Dossiers */}
-        <Route path="/dossiers/:id" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <DossierDetailPage />
-          </ProtectedRoute>
-        } />
+        <Route path="/dossiers/:id" element={<ProtectedRoute allowedRoles={["ADMIN"]}><DossierDetailPage /></ProtectedRoute>} />
 
-        <Route path="/soutenances" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <SoutenancesPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/soutenances/nouveau" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <SoutenanceFormPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/soutenances/:id" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <SoutenanceDetailPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/soutenances/:id/modifier" element={
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <SoutenanceFormPage />
-          </ProtectedRoute>
-        } />
+        <Route path="/soutenances" element={<ProtectedRoute allowedRoles={["ADMIN"]}><SoutenancesPage /></ProtectedRoute>} />
+        <Route path="/soutenances/nouveau" element={<ProtectedRoute allowedRoles={["ADMIN"]}><SoutenanceFormPage /></ProtectedRoute>} />
+        <Route path="/soutenances/:id" element={<ProtectedRoute allowedRoles={["ADMIN"]}><SoutenanceDetailPage /></ProtectedRoute>} />
+        <Route path="/soutenances/:id/modifier" element={<ProtectedRoute allowedRoles={["ADMIN"]}><SoutenanceFormPage /></ProtectedRoute>} />
 
         {/* === ROUTES CANDIDAT === */}
-        <Route path="/mon-dossier" element={
-          <ProtectedRoute allowedRoles={["CANDIDAT"]}>
-            <MonDossierPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/ma-soutenance" element={
-          <ProtectedRoute allowedRoles={["CANDIDAT"]}>
-            <MaSoutenancePage />
-          </ProtectedRoute>
-        } />
+        <Route path="/mon-dossier" element={<ProtectedRoute allowedRoles={["CANDIDAT"]}><MonDossierPage /></ProtectedRoute>} />
+        <Route path="/ma-soutenance" element={<ProtectedRoute allowedRoles={["CANDIDAT"]}><MaSoutenancePage /></ProtectedRoute>} />
 
         {/* === ROUTES ENSEIGNANT === */}
-        <Route path="/mes-candidats" element={
-          <ProtectedRoute allowedRoles={["ENSEIGNANT"]}>
-            <MesCandidatsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/mes-soutenances" element={
-          <ProtectedRoute allowedRoles={["ENSEIGNANT"]}>
-            <MesSoutenancesPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/memoires" element={
-          <ProtectedRoute allowedRoles={["ENSEIGNANT"]}>
-            <MemoiresPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/memoires/:id" element={
-          <ProtectedRoute allowedRoles={["ENSEIGNANT"]}>
-            <MemoiresPage />
-          </ProtectedRoute>
-        } />
+        <Route path="/mes-candidats" element={<ProtectedRoute allowedRoles={["ENSEIGNANT"]}><MesCandidatsPage /></ProtectedRoute>} />
+        <Route path="/mes-soutenances" element={<ProtectedRoute allowedRoles={["ENSEIGNANT"]}><MesSoutenancesPage /></ProtectedRoute>} />
+        <Route path="/memoires" element={<ProtectedRoute allowedRoles={["ENSEIGNANT"]}><MemoiresPage /></ProtectedRoute>} />
+        <Route path="/memoires/:id" element={<ProtectedRoute allowedRoles={["ENSEIGNANT"]}><MemoiresPage /></ProtectedRoute>} />
       </Route>
 
       {/* Catch-all */}

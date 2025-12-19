@@ -6,22 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import sessionService from "@/services/sessionService";
-import {
-  StatutSession,
-  Cycle,
-  STATUT_SESSION_LABELS,
-  CYCLE_LABELS
-} from "@/types/models";
+import { StatutSession, Cycle, STATUT_SESSION_LABELS, CYCLE_LABELS } from "@/types/models";
 
 const STATUTS: StatutSession[] = ['OUVERT', 'FERME', 'EN_COURS', 'TERMINE'];
 const CYCLES: Cycle[] = ['INGENIEUR', 'SCIENCE_INGENIEUR', 'MASTER_PRO'];
@@ -33,30 +21,26 @@ export default function SessionFormPage() {
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
-    titre: "",
-    annee_academique: "2024-2025",
-    date_ouverture: "",
-    date_cloture: "",
+    titre: "", annee_academique: "", // Modifié ici
+    date_ouverture: "", date_cloture: "",
     niveau_concerne: "" as Cycle | "",
     statut: "OUVERT" as StatutSession,
     description: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Charger les données si édition
   const { data: session, isLoading: isLoadingSession } = useQuery({
-    queryKey: ['session', id],
+    queryKey: ['sessions', id],
     queryFn: () => sessionService.getById(id!),
     enabled: isEditing,
   });
 
-  // Remplir le formulaire avec les données chargées
   useEffect(() => {
     if (session) {
       setFormData({
         titre: session.titre,
         annee_academique: session.annee_academique,
-        date_ouverture: session.date_ouverture.slice(0, 16), // Format datetime-local
+        date_ouverture: session.date_ouverture.slice(0, 16),
         date_cloture: session.date_cloture.slice(0, 16),
         niveau_concerne: session.niveau_concerne as Cycle,
         statut: session.statut,
@@ -65,228 +49,59 @@ export default function SessionFormPage() {
     }
   }, [session]);
 
-  // Mutation pour créer/modifier
   const mutation = useMutation({
     mutationFn: (data: typeof formData) => {
-      // Convertir les dates locales en ISO
-      const submitData = {
-        ...data,
-        date_ouverture: new Date(data.date_ouverture).toISOString(),
-        date_cloture: new Date(data.date_cloture).toISOString(),
-      };
-
-      return isEditing
-        ? sessionService.update(id!, submitData)
-        : sessionService.create(submitData);
+      const submitData = { ...data, date_ouverture: new Date(data.date_ouverture).toISOString(), date_cloture: new Date(data.date_cloture).toISOString() };
+      return isEditing ? sessionService.update(id!, submitData) : sessionService.create(submitData);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] });
-      toast.success(isEditing ? "Session modifiée avec succès" : "Session créée avec succès");
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      if(isEditing) await queryClient.invalidateQueries({ queryKey: ['sessions', id] });
+      toast.success(isEditing ? "Session modifiée" : "Session créée");
       navigate("/sessions");
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail ||
-                     error?.response?.data?.message ||
-                     "Erreur lors de la sauvegarde";
-      toast.error(message);
-    },
+    onError: (error: any) => toast.error(error.response?.data?.detail || "Erreur de sauvegarde"),
   });
 
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.titre.trim()) {
-      newErrors.titre = "Le titre est requis";
-    }
-    if (!formData.annee_academique.trim()) {
-      newErrors.annee_academique = "L'année académique est requise";
-    }
-    if (!formData.date_ouverture) {
-      newErrors.date_ouverture = "La date d'ouverture est requise";
-    }
-    if (!formData.date_cloture) {
-      newErrors.date_cloture = "La date de clôture est requise";
-    }
-    if (formData.date_ouverture && formData.date_cloture && formData.date_ouverture > formData.date_cloture) {
-      newErrors.date_cloture = "La date de clôture doit être après la date d'ouverture";
-    }
-    if (!formData.niveau_concerne) {
-      newErrors.niveau_concerne = "Le niveau concerné est requis";
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
-
     mutation.mutate(formData);
   };
 
   if (isLoadingSession) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/sessions")}>
-          <ArrowLeft className="h-5 w-5" />
+      <div className="space-y-2">
+        <Button variant="ghost" size="sm" onClick={() => navigate("/sessions")} className="-ml-2">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Retour à la liste
         </Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {isEditing ? "Modifier la session" : "Nouvelle session"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {isEditing ? "Modifiez les informations de la session" : "Créez une nouvelle session de soutenance"}
-          </p>
-        </div>
+        <h1 className="text-2xl font-bold tracking-tight">{isEditing ? "Modifier la session" : "Nouvelle session"}</h1>
+        <p className="text-sm text-muted-foreground">Remplissez les informations ci-dessous.</p>
       </div>
 
-      <Card className="max-w-2xl">
-        <CardHeader>
-          <CardTitle>Informations de la session</CardTitle>
-          <CardDescription>Définissez les paramètres de la session de soutenance</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="titre">
-                Titre <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="titre"
-                placeholder="Session Master 2024-2025"
-                value={formData.titre}
-                onChange={(e) => setFormData({ ...formData, titre: e.target.value })}
-                className={errors.titre ? "border-destructive" : ""}
-              />
-              {errors.titre && <p className="text-sm text-destructive">{errors.titre}</p>}
-            </div>
+      <form onSubmit={handleSubmit} className="space-y-8 pt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+            <div className="space-y-2"><Label htmlFor="titre">Titre</Label><Input id="titre" value={formData.titre} onChange={e => setFormData({...formData, titre: e.target.value})} placeholder="Session Master Informatique..." /></div>
+            <div className="space-y-2"><Label htmlFor="annee_academique">Année académique</Label><Input id="annee_academique" value={formData.annee_academique} onChange={e => setFormData({...formData, annee_academique: e.target.value})} placeholder="2024-2025" /></div>
+            <div className="space-y-2"><Label htmlFor="date_ouverture">Date d'ouverture</Label><Input id="date_ouverture" type="datetime-local" value={formData.date_ouverture} onChange={e => setFormData({...formData, date_ouverture: e.target.value})} /></div>
+            <div className="space-y-2"><Label htmlFor="date_cloture">Date de clôture</Label><Input id="date_cloture" type="datetime-local" value={formData.date_cloture} onChange={e => setFormData({...formData, date_cloture: e.target.value})} /></div>
+            <div className="space-y-2"><Label htmlFor="niveau_concerne">Cycle concerné</Label><Select value={formData.niveau_concerne} onValueChange={value => setFormData({...formData, niveau_concerne: value as Cycle})}><SelectTrigger><SelectValue placeholder="Sélectionner un cycle"/></SelectTrigger><SelectContent>{CYCLES.map(c => <SelectItem key={c} value={c}>{CYCLE_LABELS[c]}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-2"><Label htmlFor="statut">Statut</Label><Select value={formData.statut} onValueChange={value => setFormData({...formData, statut: value as StatutSession})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{STATUTS.map(s => <SelectItem key={s} value={s}>{STATUT_SESSION_LABELS[s]}</SelectItem>)}</SelectContent></Select></div>
+        </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="annee_academique">
-                  Année académique <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="annee_academique"
-                  placeholder="2024-2025"
-                  value={formData.annee_academique}
-                  onChange={(e) => setFormData({ ...formData, annee_academique: e.target.value })}
-                  className={errors.annee_academique ? "border-destructive" : ""}
-                />
-                {errors.annee_academique && <p className="text-sm text-destructive">{errors.annee_academique}</p>}
-              </div>
+        <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea id="description" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} rows={4} placeholder="Description de la session..." />
+        </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="niveau_concerne">
-                  Cycle concerné <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={formData.niveau_concerne}
-                  onValueChange={(value) => setFormData({ ...formData, niveau_concerne: value as Cycle })}
-                >
-                  <SelectTrigger className={errors.niveau_concerne ? "border-destructive" : ""}>
-                    <SelectValue placeholder="Sélectionner le cycle" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CYCLES.map((cycle) => (
-                      <SelectItem key={cycle} value={cycle}>
-                        {CYCLE_LABELS[cycle]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.niveau_concerne && <p className="text-sm text-destructive">{errors.niveau_concerne}</p>}
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="date_ouverture">
-                  Date d'ouverture <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="date_ouverture"
-                  type="datetime-local"
-                  value={formData.date_ouverture}
-                  onChange={(e) => setFormData({ ...formData, date_ouverture: e.target.value })}
-                  className={errors.date_ouverture ? "border-destructive" : ""}
-                />
-                {errors.date_ouverture && <p className="text-sm text-destructive">{errors.date_ouverture}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="date_cloture">
-                  Date de clôture <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="date_cloture"
-                  type="datetime-local"
-                  value={formData.date_cloture}
-                  onChange={(e) => setFormData({ ...formData, date_cloture: e.target.value })}
-                  className={errors.date_cloture ? "border-destructive" : ""}
-                />
-                {errors.date_cloture && <p className="text-sm text-destructive">{errors.date_cloture}</p>}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="statut">Statut</Label>
-              <Select
-                value={formData.statut}
-                onValueChange={(value) => setFormData({ ...formData, statut: value as StatutSession })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUTS.map((statut) => (
-                    <SelectItem key={statut} value={statut}>
-                      {STATUT_SESSION_LABELS[statut]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                placeholder="Description de la session..."
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-              />
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={() => navigate("/sessions")}>
-                Annuler
-              </Button>
-              <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Enregistrement...
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Enregistrer
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+        <div className="flex justify-end gap-3 pt-6 border-t">
+          <Button type="button" variant="ghost" onClick={() => navigate("/sessions")}>Annuler</Button>
+          <Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Enregistrement...</> : <><Save className="mr-2 h-4 w-4"/>Enregistrer</>}</Button>
+        </div>
+      </form>
     </div>
   );
 }

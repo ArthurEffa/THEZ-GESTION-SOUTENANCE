@@ -9,8 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import sessionService from "@/services/sessionService";
 import { SessionSoutenance, STATUT_SESSION_LABELS, StatutSession } from "@/types/models";
-import { Loader2, Calendar, FileText } from "lucide-react";
-import { format } from "date-fns";
+import { Loader2, Plus, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import sessionHeroImage from "@/assets/illustrations/gestion-session-hero.png";
 
@@ -25,198 +27,123 @@ export default function SessionsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; session: SessionSoutenance | null }>({
-    open: false,
-    session: null,
-  });
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; session: SessionSoutenance | null }>({ open: false, session: null });
 
-  // Récupération des sessions depuis l'API
-  const { data: sessions = [], isLoading, error } = useQuery({
+  const { data: sessions = [], isLoading, error } = useQuery<SessionSoutenance[]>({ 
     queryKey: ['sessions'],
     queryFn: () => sessionService.getAll(),
   });
 
-  // Mutation pour la suppression
   const deleteMutation = useMutation({
     mutationFn: (id: string) => sessionService.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] });
-      toast.success(`Session supprimée avec succès`);
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      toast.success("Session supprimée avec succès");
       setDeleteDialog({ open: false, session: null });
     },
-    onError: () => {
-      toast.error("Erreur lors de la suppression de la session");
-    },
+    onError: () => toast.error("Erreur lors de la suppression"),
   });
 
   const filteredSessions = sessions.filter(
     (session) =>
       session.titre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      session.annee_academique.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      session.niveau_concerne.toLowerCase().includes(searchQuery.toLowerCase())
+      session.annee_academique.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleDelete = () => {
-    if (deleteDialog.session) {
-      deleteMutation.mutate(deleteDialog.session.id);
-    }
+    if (deleteDialog.session) deleteMutation.mutate(deleteDialog.session.id);
   };
 
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), "dd MMM yyyy", { locale: fr });
-    } catch {
-      return dateString;
-    }
+  const formatDate = (dateString: string | null) => {
+      if (!dateString) return "N/A";
+      try {
+        // Essayer de parser la date comme une chaîne ISO 8601, puis formater.
+        const date = parseISO(dateString);
+        return format(date, "dd MMM yyyy", { locale: fr });
+      } catch (error) {
+        // Si ça échoue, retourner la chaîne originale (ou un message d'erreur)
+        console.error("Invalid date format:", dateString);
+        return "Date invalide";
+      }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-        <p className="text-destructive">Erreur lors du chargement des sessions</p>
-        <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['sessions'] })}>
-          Réessayer
-        </Button>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  if (error) return <div className="text-center py-10"><p className="text-destructive">Erreur de chargement.</p></div>;
 
   return (
-    <div className="space-y-6">
-      {/* Header section */}
-      <div className="flex flex-col lg:flex-row items-center justify-between gap-4 p-6 rounded-xl bg-muted/30 border border-border/40">
-        <div className="flex-1 space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight">Sessions de soutenance</h1>
-          <p className="text-muted-foreground">
-            Gérez les sessions de soutenance par année académique
-          </p>
-          <Button
-            className="mt-4"
-            onClick={() => navigate("/sessions/nouveau")}
-          >
-            Créer une session
-          </Button>
-        </div>
-        <div className="w-full lg:w-72 h-48 flex items-center justify-center">
-          <img
-            src={sessionHeroImage}
-            alt="Illustration gestion des sessions"
-            className="max-w-full max-h-full object-contain"
-          />
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight">Sessions de soutenance</h1>
+            <p className="text-muted-foreground text-sm">Gérez les sessions de soutenance par année académique.</p>
+          </div>
+          <img src={sessionHeroImage} alt="Gestion des sessions" className="w-32 h-auto hidden md:block"/>
       </div>
 
-      {/* Search */}
-      <div className="max-w-md">
-        <Input
-          placeholder="Rechercher une session..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="h-9"
-        />
-      </div>
-
-      {/* Grid de sessions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredSessions.map((session) => (
-          <Card
-            key={session.id}
-            className="group hover:shadow-md transition-shadow cursor-pointer border-border/60"
-            onClick={() => navigate(`/sessions/${session.id}`)}
-          >
-            <CardContent className="p-0">
-              {/* Header avec badge statut */}
-              <div className="p-4 border-b border-border/40 bg-muted/20">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="font-medium text-sm leading-tight flex-1">
-                    {session.titre}
-                  </h3>
-                  <Badge
-                    variant="outline"
-                    className={STATUT_COLORS[session.statut]}
-                  >
-                    {STATUT_SESSION_LABELS[session.statut]}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="font-medium">{session.annee_academique}</span>
-                  <span>•</span>
-                  <span>{session.niveau_concerne}</span>
-                </div>
-              </div>
-
-              {/* Contenu */}
-              <div className="p-4 space-y-3">
-                <div className="space-y-2 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-3.5 w-3.5" />
-                    <span>
-                      Du {formatDate(session.date_ouverture)} au {formatDate(session.date_cloture)}
-                    </span>
-                  </div>
-                  {session.description && (
-                    <div className="flex items-start gap-2">
-                      <FileText className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                      <span className="line-clamp-2">{session.description}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-border/40">
-                  <div className="flex gap-3 text-xs text-muted-foreground">
-                    <span>{session.nb_dossiers || 0} dossiers</span>
-                    <span>{session.nb_soutenances || 0} soutenances</span>
-                  </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/sessions/${session.id}/modifier`);
-                      }}
-                    >
-                      Modifier
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-destructive hover:text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteDialog({ open: true, session });
-                      }}
-                    >
-                      Supprimer
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {filteredSessions.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          Aucune session trouvée
-        </div>
-      )}
+      <Card>
+        <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-4 gap-4">
+                <Input
+                    placeholder="Rechercher par titre ou année..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="max-w-sm"
+                />
+                <Button onClick={() => navigate("/sessions/nouveau")}>
+                  <Plus className="mr-2 h-4 w-4" /> Créer une session
+                </Button>
+            </div>
+            <div className="border rounded-md">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Titre</TableHead>
+                            <TableHead>Période</TableHead>
+                            <TableHead>Statistiques</TableHead>
+                            <TableHead>Statut</TableHead>
+                            <TableHead className="w-[50px]"></TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {filteredSessions.length > 0 ? filteredSessions.map((session) => (
+                            <TableRow key={session.id} onClick={() => navigate(`/sessions/${session.id}`)} className="cursor-pointer">
+                                <TableCell>
+                                    <div className="font-medium">{session.titre}</div>
+                                    <div className="text-xs text-muted-foreground">{session.annee_academique} - {session.niveau_concerne}</div>
+                                </TableCell>
+                                <TableCell>{formatDate(session.date_ouverture)} - {formatDate(session.date_cloture)}</TableCell>
+                                <TableCell>
+                                    <div className="text-sm">{session.nb_dossiers || 0} dossiers</div>
+                                    <div className="text-xs text-muted-foreground">{session.nb_soutenances || 0} soutenances</div>
+                                </TableCell>
+                                <TableCell><Badge variant="outline" className={STATUT_COLORS[session.statut]}>{STATUT_SESSION_LABELS[session.statut]}</Badge></TableCell>
+                                <TableCell>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}><MoreHorizontal className="h-4 w-4" /></Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/sessions/${session.id}/modifier`); }}>Modifier</DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDeleteDialog({ open: true, session }); }} className="text-destructive">Supprimer</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        )) : (
+                            <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">Aucune session trouvée.</TableCell></TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+        </CardContent>
+      </Card>
 
       <ConfirmDialog
         open={deleteDialog.open}
         onOpenChange={(open) => setDeleteDialog({ open, session: null })}
         title="Supprimer la session"
-        description={`Êtes-vous sûr de vouloir supprimer "${deleteDialog.session?.titre}" ? Cette action est irréversible et supprimera toutes les données associées.`}
+        description={`Êtes-vous sûr de vouloir supprimer "${deleteDialog.session?.titre}" ?`}
         confirmLabel="Supprimer"
         onConfirm={handleDelete}
         variant="destructive"

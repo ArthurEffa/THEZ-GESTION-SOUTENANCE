@@ -1,456 +1,134 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Cycle, CYCLE_LABELS, Departement } from "@/types/models";
+import { Cycle, CYCLE_LABELS } from "@/types/models";
 import candidatService, { CandidatFormData } from "@/services/candidatService";
 import departementService from "@/services/departementService";
-import ajoutCandidatHeroImg from "@/assets/illustrations/ajout-etudiant-hero.png";
 
 const CYCLES: Cycle[] = ['INGENIEUR', 'SCIENCE_INGENIEUR', 'MASTER_PRO'];
+
+// Helper to capitalize first letter
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 
 export default function CandidatFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = Boolean(id);
+  const queryClient = useQueryClient();
 
-  const [formData, setFormData] = useState<CandidatFormData>({
-    email: "",
-    username: "",
-    first_name: "",
-    last_name: "",
-    password: "",
-    phone: "",
-    matricule: "",
-    cycle: "INGENIEUR",
-    departement_id: "",
+  const [formData, setFormData] = useState<Partial<CandidatFormData>>({
+    email: "", username: "", first_name: "", last_name: "",
+    phone: "", matricule: "", cycle: "INGENIEUR", departement_id: "",
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const { data: departements = [] } = useQuery({
+    queryKey: ['departements'],
+    queryFn: departementService.getAll,
   });
 
-  const [departements, setDepartements] = useState<Departement[]>([]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingData, setIsLoadingData] = useState(false);
+  const { data: candidat, isLoading: isLoadingCandidat } = useQuery({
+    queryKey: ['candidats', id],
+    queryFn: () => candidatService.getById(id!),
+    enabled: isEditing,
+  });
 
-  // Charger les départements
   useEffect(() => {
-    const loadDepartements = async () => {
-      try {
-        const data = await departementService.getAll();
-        setDepartements(data);
-      } catch (error: any) {
-        console.error('Erreur lors du chargement des départements:', error);
-        toast.error('Erreur lors du chargement des départements');
-      }
-    };
-    loadDepartements();
-  }, []);
+    if (candidat) {
+      setFormData({
+        email: candidat.user.email, username: candidat.user.username,
+        first_name: candidat.user.first_name, last_name: candidat.user.last_name,
+        phone: candidat.user.phone || "", matricule: candidat.matricule,
+        cycle: candidat.cycle, departement_id: candidat.departement?.id || "",
+      });
+    }
+  }, [candidat]);
 
-  // Charger les données du candidat en mode édition
-  useEffect(() => {
-    if (isEditing && id) {
-      const loadCandidat = async () => {
-        setIsLoadingData(true);
-        try {
-          const candidat = await candidatService.getById(id);
-          setFormData({
-            email: candidat.user.email,
-            username: candidat.user.username,
-            first_name: candidat.user.first_name,
-            last_name: candidat.user.last_name,
-            password: "",
-            phone: candidat.user.phone || "",
-            matricule: candidat.matricule,
-            cycle: candidat.cycle,
-            departement_id: candidat.departement?.id || "",
-          });
-        } catch (error: any) {
-          console.error('Erreur lors du chargement du candidat:', error);
-          toast.error('Erreur lors du chargement du candidat');
-          navigate("/candidats");
-        } finally {
-          setIsLoadingData(false);
-        }
-      };
-      loadCandidat();
-    }
-  }, [isEditing, id, navigate]);
-
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.email.trim()) {
-      newErrors.email = "L'email est requis";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Format d'email invalide";
-    }
-    if (!formData.username.trim()) {
-      newErrors.username = "Le nom d'utilisateur est requis";
-    }
-    if (!formData.first_name.trim()) {
-      newErrors.first_name = "Le prénom est requis";
-    }
-    if (!formData.last_name.trim()) {
-      newErrors.last_name = "Le nom est requis";
-    }
-    if (!isEditing && !formData.password.trim()) {
-      newErrors.password = "Le mot de passe est requis";
-    } else if (formData.password && formData.password.length < 8) {
-      newErrors.password = "Le mot de passe doit contenir au minimum 8 caractères";
-    }
-    if (!formData.matricule.trim()) {
-      newErrors.matricule = "Le matricule est requis";
-    }
-    if (!formData.cycle) {
-      newErrors.cycle = "Le cycle de formation est requis";
-    }
-    if (!formData.departement_id) {
-      newErrors.departement_id = "Le département est requis";
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validate()) {
-      toast.error("Veuillez corriger les erreurs dans le formulaire");
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      if (isEditing && id) {
-        // Mode édition
-        const updateData: Partial<CandidatFormData> = {
-          email: formData.email,
-          username: formData.username,
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          phone: formData.phone,
-          matricule: formData.matricule,
-          cycle: formData.cycle,
-          departement_id: formData.departement_id,
-        };
-
-        // Ajouter le mot de passe seulement s'il est fourni
-        if (formData.password) {
-          updateData.password = formData.password;
-        }
-
-        await candidatService.update(id, updateData);
-        toast.success("Candidat modifié avec succès");
+  const saveMutation = useMutation({
+    mutationFn: (data: Partial<CandidatFormData>) => {
+      if (isEditing) {
+        return candidatService.update(id!, data);
       } else {
-        // Mode création
-        await candidatService.create(formData);
-        toast.success("Candidat créé avec succès");
+        return candidatService.create(data as CandidatFormData);
       }
-
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['candidats'] });
+      if (isEditing) await queryClient.invalidateQueries({ queryKey: ['candidats', id] });
+      toast.success(isEditing ? "Candidat modifié" : "Candidat créé");
       navigate("/candidats");
-    } catch (error: any) {
-      console.error('Erreur lors de la sauvegarde:', error);
-
-      // Gérer les erreurs spécifiques du backend
-      if (error.response?.data) {
-        const backendErrors = error.response.data;
-
-        // Si c'est un objet d'erreurs de validation
-        if (typeof backendErrors === 'object') {
-          const newErrors: Record<string, string> = {};
-
-          Object.keys(backendErrors).forEach((key) => {
-            const errorMessages = backendErrors[key];
-            if (Array.isArray(errorMessages)) {
-              newErrors[key] = errorMessages[0];
-            } else if (typeof errorMessages === 'string') {
-              newErrors[key] = errorMessages;
-            }
-          });
-
-          setErrors(newErrors);
-          toast.error("Erreur de validation du formulaire");
+    },
+    onError: (error: any) => {
+        const errorData = error.response?.data;
+        if (typeof errorData === 'object' && errorData !== null) {
+            setErrors(errorData);
+            toast.error("Erreur de validation. Veuillez vérifier les champs.");
         } else {
-          toast.error(backendErrors.detail || "Erreur lors de la sauvegarde");
+            toast.error(errorData?.detail || "Une erreur est survenue.");
         }
-      } else {
-        toast.error(
-          isEditing
-            ? "Erreur lors de la modification du candidat"
-            : "Erreur lors de la création du candidat"
-        );
-      }
-    } finally {
-      setIsLoading(false);
+    },
+  });
+
+  const handleInputChange = (field: keyof CandidatFormData, value: string) => {
+    let processedValue = value;
+    if (field === 'first_name' || field === 'last_name') {
+      processedValue = capitalize(value);
     }
+    if (field === 'matricule') {
+      processedValue = value.toUpperCase();
+    }
+    setFormData(prev => ({ ...prev, [field]: processedValue }));
   };
 
-  if (isLoadingData) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveMutation.mutate(formData);
+  };
+
+  if (isLoadingCandidat) {
+    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/candidats")}>
-          <ArrowLeft className="h-5 w-5" />
+      <div className="space-y-2">
+        <Button variant="ghost" size="sm" onClick={() => navigate("/candidats")} className="-ml-2">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Retour à la liste
         </Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {isEditing ? "Modifier le candidat" : "Nouveau candidat"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {isEditing ? "Modifiez les informations du candidat" : "Inscrivez un nouveau candidat"}
-          </p>
+        <h1 className="text-2xl font-bold tracking-tight">{isEditing ? "Modifier le candidat" : "Nouveau candidat"}</h1>
+        <p className="text-sm text-muted-foreground">Remplissez les informations ci-dessous.</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-8 pt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+            <div className="space-y-2"><Label htmlFor="first_name">Prénom</Label><Input id="first_name" value={formData.first_name} onChange={e => handleInputChange('first_name', e.target.value)} />{errors.first_name && <p className="text-sm text-destructive">{errors.first_name}</p>}</div>
+            <div className="space-y-2"><Label htmlFor="last_name">Nom</Label><Input id="last_name" value={formData.last_name} onChange={e => handleInputChange('last_name', e.target.value)} />{errors.last_name && <p className="text-sm text-destructive">{errors.last_name}</p>}</div>
+            <div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" value={formData.email} onChange={e => handleInputChange('email', e.target.value)} />{errors.email && <p className="text-sm text-destructive">{errors.email}</p>}</div>
+            <div className="space-y-2"><Label htmlFor="username">Nom d'utilisateur</Label><Input id="username" value={formData.username} onChange={e => handleInputChange('username', e.target.value)} />{errors.username && <p className="text-sm text-destructive">{errors.username}</p>}</div>
+            <div className="space-y-2"><Label htmlFor="phone">Téléphone</Label><Input id="phone" value={formData.phone} onChange={e => handleInputChange('phone', e.target.value)} /></div>
+            <div className="space-y-2"><Label htmlFor="password">Mot de passe</Label><Input id="password" type="password" onChange={e => handleInputChange('password', e.target.value)} placeholder={isEditing ? "Laisser vide pour ne pas changer" : "8 caractères min."}/>{errors.password && <p className="text-sm text-destructive">{errors.password}</p>}</div>
         </div>
-      </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Informations utilisateur</CardTitle>
-            <CardDescription>Données de connexion et coordonnées</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="email">
-                    Email <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="marie.martin@etu.fr"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className={errors.email ? "border-destructive" : ""}
-                  />
-                  {errors.email && (
-                    <p className="text-sm text-destructive">{errors.email}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="username">
-                    Nom d'utilisateur <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="username"
-                    placeholder="marie.martin"
-                    value={formData.username}
-                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    className={errors.username ? "border-destructive" : ""}
-                  />
-                  {errors.username && (
-                    <p className="text-sm text-destructive">{errors.username}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="first_name">
-                    Prénom <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="first_name"
-                    placeholder="Marie"
-                    value={formData.first_name}
-                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                    className={errors.first_name ? "border-destructive" : ""}
-                  />
-                  {errors.first_name && (
-                    <p className="text-sm text-destructive">{errors.first_name}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="last_name">
-                    Nom <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="last_name"
-                    placeholder="Martin"
-                    value={formData.last_name}
-                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    className={errors.last_name ? "border-destructive" : ""}
-                  />
-                  {errors.last_name && (
-                    <p className="text-sm text-destructive">{errors.last_name}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="password">
-                    Mot de passe {!isEditing && <span className="text-destructive">*</span>}
-                  </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder={isEditing ? "Laisser vide pour ne pas modifier" : "Min. 8 caractères"}
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className={errors.password ? "border-destructive" : ""}
-                  />
-                  {errors.password ? (
-                    <p className="text-sm text-destructive">{errors.password}</p>
-                  ) : !isEditing ? (
-                    <p className="text-xs text-muted-foreground">Minimum 8 caractères</p>
-                  ) : null}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Téléphone</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="06 12 34 56 78"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  />
-                </div>
-              </div>
+        <div className="border-t pt-8 space-y-8">
+            <h2 className="text-lg font-semibold">Profil Académique</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                <div className="space-y-2"><Label htmlFor="matricule">Matricule</Label><Input id="matricule" value={formData.matricule} onChange={e => handleInputChange('matricule', e.target.value)} />{errors.matricule && <p className="text-sm text-destructive">{errors.matricule}</p>}</div>
+                <div className="space-y-2"><Label htmlFor="cycle">Cycle</Label><Select value={formData.cycle} onValueChange={cycle => setFormData({...formData, cycle: cycle as Cycle})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{CYCLES.map(c => <SelectItem key={c} value={c}>{CYCLE_LABELS[c]}</SelectItem>)}</SelectContent></Select>{errors.cycle && <p className="text-sm text-destructive">{errors.cycle}</p>}</div>
+                <div className="space-y-2 md:col-span-2"><Label htmlFor="departement_id">Département</Label><Select value={formData.departement_id} onValueChange={departement_id => setFormData({...formData, departement_id})}><SelectTrigger><SelectValue placeholder="Sélectionner un département"/></SelectTrigger><SelectContent>{departements.map(d => <SelectItem key={d.id} value={d.id}>{d.nom}</SelectItem>)}</SelectContent></Select>{errors.departement_id && <p className="text-sm text-destructive">{errors.departement_id}</p>}</div>
             </div>
+        </div>
 
-            <Separator />
-
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-lg font-medium">Profil candidat</h3>
-                <p className="text-sm text-muted-foreground">
-                  Informations académiques du candidat
-                </p>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="matricule">
-                    Matricule <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="matricule"
-                    placeholder="ET2024001"
-                    value={formData.matricule}
-                    onChange={(e) => setFormData({ ...formData, matricule: e.target.value.toUpperCase() })}
-                    className={errors.matricule ? "border-destructive" : ""}
-                  />
-                  {errors.matricule && (
-                    <p className="text-sm text-destructive">{errors.matricule}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="cycle">
-                    Cycle de formation <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    value={formData.cycle}
-                    onValueChange={(value) => setFormData({ ...formData, cycle: value as Cycle })}
-                  >
-                    <SelectTrigger className={errors.cycle ? "border-destructive" : ""}>
-                      <SelectValue placeholder="Sélectionner le cycle" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CYCLES.map((cycle) => (
-                        <SelectItem key={cycle} value={cycle}>
-                          {CYCLE_LABELS[cycle]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.cycle && (
-                    <p className="text-sm text-destructive">{errors.cycle}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="departement_id">
-                  Département <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={formData.departement_id}
-                  onValueChange={(value) => setFormData({ ...formData, departement_id: value })}
-                >
-                  <SelectTrigger className={errors.departement_id ? "border-destructive" : ""}>
-                    <SelectValue placeholder="Sélectionner un département" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departements.map((dept) => (
-                      <SelectItem key={dept.id} value={dept.id}>
-                        {dept.code} - {dept.nom}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.departement_id && (
-                  <p className="text-sm text-destructive">{errors.departement_id}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={() => navigate("/candidats")}>
-                Annuler
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {!isLoading && <Save className="mr-2 h-4 w-4" />}
-                {isLoading ? "Enregistrement..." : "Enregistrer"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Sidebar avec illustration */}
-      <div className="space-y-6">
-        <Card className="overflow-hidden">
-          <CardContent className="p-4 flex items-center justify-center">
-            <div className="w-full h-48 overflow-hidden">
-              <img
-                src={ajoutCandidatHeroImg}
-                alt="Ajout d'un candidat"
-                className="w-full h-full object-contain"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Information</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            <p>
-              {isEditing
-                ? "Modifiez les informations du candidat. Les champs marqués d'un astérisque (*) sont obligatoires."
-                : "Créez un nouveau compte candidat. Un email et un mot de passe lui seront attribués pour accéder à son espace personnel."
-              }
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+        <div className="flex justify-end gap-3 pt-6 border-t">
+          <Button type="button" variant="ghost" onClick={() => navigate("/candidats")}>Annuler</Button>
+          <Button type="submit" disabled={saveMutation.isPending}>{saveMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Enregistrement...</> : <><Save className="mr-2 h-4 w-4"/>Enregistrer</>}</Button>
+        </div>
+      </form>
     </div>
   );
 }

@@ -1,11 +1,14 @@
+
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, User, Mail, Phone, Calendar, Edit, Plus, FileText, Scale, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, User, Mail, Phone, Calendar, Edit, Plus, FileText, Scale, Loader2, BadgeInfo, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -14,27 +17,36 @@ import dossierService from "@/services/dossierService";
 import { CYCLE_LABELS, STATUT_DOSSIER_LABELS, STATUT_SOUTENANCE_LABELS } from "@/types/models";
 import { CreateDossierDialog } from "@/components/candidats/CreateDossierDialog";
 
+const InfoItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: React.ReactNode }) => (
+    <div className="flex items-start gap-3">
+        <Icon className="h-4 w-4 mt-1 text-muted-foreground" />
+        <div className="flex flex-col">
+            <span className="text-sm text-muted-foreground">{label}</span>
+            <span className="text-sm font-medium">{value}</span>
+        </div>
+    </div>
+);
+
 export default function CandidatDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [createDossierOpen, setCreateDossierOpen] = useState(false);
 
-  // Charger les données du candidat
   const { data: candidat, isLoading, error } = useQuery({
     queryKey: ['candidat', id],
     queryFn: () => candidatService.getById(id!),
     enabled: Boolean(id),
   });
 
-  // Charger les dossiers du candidat
   const { data: dossiers = [], isLoading: isLoadingDossiers } = useQuery({
     queryKey: ['dossiers', 'candidat', id],
     queryFn: () => dossierService.getByCandidatId(id!),
     enabled: Boolean(id),
   });
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "N/A";
     try {
       return format(new Date(dateString), "dd MMM yyyy", { locale: fr });
     } catch {
@@ -43,253 +55,116 @@ export default function CandidatDetailPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
   if (error || !candidat) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-        <p className="text-destructive">Erreur lors du chargement du profil candidat</p>
-        <Button onClick={() => navigate("/candidats")}>
-          Retour à la liste
-        </Button>
+        <p className="text-destructive">Erreur lors du chargement du profil</p>
+        <Button onClick={() => navigate("/candidats")}>Retour à la liste</Button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/candidats")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              {candidat.user.first_name} {candidat.user.last_name}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Profil candidat - Matricule: {candidat.matricule}
-            </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16 border-2 border-border">
+                  <AvatarImage src={candidat.photo} alt={`${candidat.user.first_name} ${candidat.user.last_name}`} />
+                  <AvatarFallback className="text-xl">{candidat.user.first_name[0]}{candidat.user.last_name[0]}</AvatarFallback>
+              </Avatar>
+              <div className="space-y-1">
+                  <h1 className="text-2xl font-bold tracking-tight">
+                      {candidat.user.first_name} {candidat.user.last_name}
+                  </h1>
+                  <p className="text-muted-foreground">Matricule: {candidat.matricule}</p>
+              </div>
           </div>
+        <div className="flex items-center gap-2">
+            <Link to={`/candidats/${id}/modifier`}>
+                <Button variant="outline" size="sm"><Edit className="mr-2 h-4 w-4" />Modifier</Button>
+            </Link>
+            {!candidat.has_dossier && (
+                <Button size="sm" onClick={() => setCreateDossierOpen(true)}><Plus className="mr-2 h-4 w-4" />Créer un dossier</Button>
+            )}
         </div>
-        <Button onClick={() => navigate(`/candidats/${id}/modifier`)}>
-          <Edit className="h-4 w-4 mr-2" />
-          Modifier
-        </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Colonne gauche - Informations personnelles */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        {/* Colonne gauche - Informations */}
         <div className="space-y-6">
-          {/* Photo et infos de base */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Informations personnelles
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {candidat.photo && (
-                <div className="flex justify-center">
-                  <img
-                    src={candidat.photo}
-                    alt={`${candidat.user.first_name} ${candidat.user.last_name}`}
-                    className="w-32 h-32 rounded-full object-cover border-4 border-border"
-                  />
-                </div>
-              )}
-
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <a href={`mailto:${candidat.user.email}`} className="text-primary hover:underline">
-                    {candidat.user.email}
-                  </a>
-                </div>
-
-                {candidat.user.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{candidat.user.phone}</span>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>Inscrit le {formatDate(candidat.user.date_joined)}</span>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Cycle</span>
-                  <Badge variant="outline">{CYCLE_LABELS[candidat.cycle]}</Badge>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Département</span>
-                  <Badge variant="secondary">
-                    {candidat.departement ? candidat.departement.nom : "Non assigné"}
-                  </Badge>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Matricule</span>
-                  <span className="font-mono text-sm">{candidat.matricule}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            <h2 className="text-lg font-semibold">Informations</h2>
+            <div className="space-y-4">
+                <InfoItem icon={Mail} label="Email" value={<a href={`mailto:${candidat.user.email}`} className="text-primary hover:underline">{candidat.user.email}</a>} />
+                {candidat.user.phone && <InfoItem icon={Phone} label="Téléphone" value={candidat.user.phone} />}
+                <InfoItem icon={Calendar} label="Inscrit le" value={formatDate(candidat.user.date_joined)} />
+                <Separator />
+                <InfoItem icon={BadgeInfo} label="Cycle" value={<Badge variant="outline">{CYCLE_LABELS[candidat.cycle]}</Badge>} />
+                <InfoItem icon={Building} label="Département" value={candidat.departement ? candidat.departement.nom : "Non assigné"} />
+            </div>
         </div>
 
-        {/* Colonne droite - Dossiers et soutenances */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Dossiers de soutenance */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Dossiers de soutenance
-                  </CardTitle>
-                  <CardDescription>
-                    {dossiers.length === 0
-                      ? "Aucun dossier créé"
-                      : `${dossiers.length} dossier${dossiers.length > 1 ? 's' : ''}`
-                    }
-                  </CardDescription>
-                </div>
-                {!candidat.has_dossier && (
-                  <Button size="sm" onClick={() => setCreateDossierOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Créer un dossier
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isLoadingDossiers ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                </div>
-              ) : dossiers.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Aucun dossier de soutenance</p>
-                  <p className="text-sm mt-1">Créez un dossier pour ce candidat</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {dossiers.map((dossier) => (
-                    <div
-                      key={dossier.id}
-                      className="p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/dossiers/${dossier.id}`)}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-medium">{dossier.titre_memoire}</h4>
-                            <Badge
-                              variant="outline"
-                              className={
-                                dossier.statut === 'VALIDE'
-                                  ? "bg-green-100 text-green-800 border-green-200"
-                                  : dossier.statut === 'REJETE'
-                                  ? "bg-red-100 text-red-800 border-red-200"
-                                  : dossier.statut === 'DEPOSE'
-                                  ? "bg-blue-100 text-blue-800 border-blue-200"
-                                  : "bg-gray-100 text-gray-800 border-gray-200"
-                              }
-                            >
-                              {STATUT_DOSSIER_LABELS[dossier.statut]}
-                            </Badge>
-                          </div>
-
-                          <div className="text-sm text-muted-foreground space-y-1">
-                            <p>Session: {dossier.session?.titre || 'Non définie'}</p>
-                            {dossier.encadreur && (
-                              <p>
-                                Encadreur: {dossier.encadreur.nom_complet ||
-                                  `${dossier.encadreur.user?.first_name || ''} ${dossier.encadreur.user?.last_name || ''}`.trim()}
-                              </p>
+        {/* Colonne droite - Activité */}
+        <div className="lg:col-span-2 space-y-10">
+            {/* Section Dossiers */}
+            <div>
+                <h2 className="text-lg font-semibold mb-4">Dossiers de soutenance</h2>
+                <Card>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Titre du mémoire</TableHead>
+                                <TableHead>Session</TableHead>
+                                <TableHead>Statut</TableHead>
+                                <TableHead>Dépôt</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoadingDossiers ? (
+                                <TableRow><TableCell colSpan={4} className="text-center"><Loader2 className="inline-block h-6 w-6 animate-spin" /></TableCell></TableRow>
+                            ) : dossiers.length > 0 ? (
+                                dossiers.map(dossier => (
+                                    <TableRow key={dossier.id} onClick={() => navigate(`/dossiers/${dossier.id}`)} className="cursor-pointer hover:bg-muted/50">
+                                        <TableCell className="font-medium max-w-xs truncate">{dossier.titre_memoire}</TableCell>
+                                        <TableCell>{dossier.session?.titre || "-"}</TableCell>
+                                        <TableCell><Badge variant="outline">{STATUT_DOSSIER_LABELS[dossier.statut]}</Badge></TableCell>
+                                        <TableCell>{formatDate(dossier.date_depot)}</TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow><TableCell colSpan={4} className="text-center h-24 text-muted-foreground">Aucun dossier créé.</TableCell></TableRow>
                             )}
-                            <p>Déposé le {formatDate(dossier.date_depot)}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                        </TableBody>
+                    </Table>
+                </Card>
+            </div>
 
-          {/* Soutenances */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Scale className="h-5 w-5" />
-                Soutenances
-              </CardTitle>
-              <CardDescription>
-                Historique des soutenances du candidat
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {dossiers.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Scale className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Aucune soutenance</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {dossiers.map((dossier) => {
-                    // Vérifier si le dossier a une soutenance (cette info devrait venir du backend)
-                    // Pour l'instant on affiche juste les dossiers validés
-                    if (dossier.statut !== 'VALIDE') return null;
-
-                    return (
-                      <div
-                        key={dossier.id}
-                        className="p-4 border rounded-lg"
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{dossier.titre_memoire}</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Session: {dossier.session?.titre || 'Non définie'}
-                        </p>
-                        {/* TODO: Afficher les détails de la soutenance quand disponible */}
-                      </div>
-                    );
-                  })}
-                  {dossiers.every(d => d.statut !== 'VALIDE') && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Scale className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>Aucune soutenance planifiée</p>
-                      <p className="text-sm mt-1">Les soutenances sont planifiées après validation des dossiers</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            {/* Section Soutenances */}
+            <div>
+                <h2 className="text-lg font-semibold mb-4">Soutenances</h2>
+                <Card>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Titre</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Jury</TableHead>
+                                <TableHead>Statut</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {/* Placeholder data - to be replaced with actual soutenance data */}
+                            <TableRow><TableCell colSpan={4} className="text-center h-24 text-muted-foreground">Aucune soutenance planifiée.</TableCell></TableRow>
+                        </TableBody>
+                    </Table>
+                </Card>
+            </div>
         </div>
       </div>
 
-      {/* Dialog pour créer un dossier */}
       <CreateDossierDialog
         open={createDossierOpen}
         onOpenChange={setCreateDossierOpen}
@@ -297,7 +172,6 @@ export default function CandidatDetailPage() {
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['dossiers', 'candidat', id] });
           queryClient.invalidateQueries({ queryKey: ['candidat', id] });
-          queryClient.invalidateQueries({ queryKey: ['candidats'] });
         }}
       />
     </div>

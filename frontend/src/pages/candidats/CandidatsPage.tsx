@@ -1,230 +1,155 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Loader2 } from "lucide-react";
-import candidatsHeroImage from "@/assets/illustrations/etudiants-hero.png";
-import { PageHeader } from "@/components/common/PageHeader";
-import { DataTable, Column } from "@/components/common/DataTable";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { CandidatProfile, CYCLE_LABELS } from "@/types/models";
+import { Loader2, Plus, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { CandidatProfile, CYCLE_LABELS, Departement } from "@/types/models";
 import candidatService from "@/services/candidatService";
 import departementService from "@/services/departementService";
+import candidatsHeroImage from "@/assets/illustrations/etudiants-hero.png";
 
 export default function CandidatsPage() {
   const navigate = useNavigate();
-
-  // États
-  const [candidats, setCandidats] = useState<CandidatProfile[]>([]);
-  const [departements, setDepartements] = useState<{ id: string; nom: string }[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterDepartement, setFilterDepartement] = useState<string>("all");
   const [filterCycle, setFilterCycle] = useState<string>("all");
-  const [deleteDialog, setDeleteDialog] = useState<{
-    open: boolean;
-    candidat: CandidatProfile | null
-  }>({
-    open: false,
-    candidat: null,
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; candidat: CandidatProfile | null }>({ open: false, candidat: null });
+
+  const { data: candidats = [], isLoading: isLoadingCandidats } = useQuery<CandidatProfile[]>({ 
+    queryKey: ['candidats'],
+    queryFn: () => candidatService.getAll(),
   });
 
-  // Charger les données au montage du composant
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      // Charger candidats et départements en parallèle
-      const [candidatsData, departementsData] = await Promise.all([
-        candidatService.getAll(),
-        departementService.getAll(),
-      ]);
-
-      setCandidats(candidatsData);
-      setDepartements(departementsData);
-    } catch (error: any) {
-      console.error('Erreur lors du chargement des données:', error);
-      toast.error('Erreur lors du chargement des candidats');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Filtrer les candidats
-  const filteredCandidats = candidats.filter((candidat) => {
-    if (filterDepartement !== "all" && candidat.departement?.id !== filterDepartement) {
-      return false;
-    }
-    if (filterCycle !== "all" && candidat.cycle !== filterCycle) {
-      return false;
-    }
-    return true;
+  const { data: departements = [] } = useQuery<Departement[]>({ 
+    queryKey: ['departements'],
+    queryFn: () => departementService.getAll(),
   });
 
-  // Colonnes du tableau
-  const columns: Column<CandidatProfile>[] = [
-    {
-      key: "matricule",
-      header: "Matricule",
-      render: (candidat) => (
-        <span className="font-mono text-primary">{candidat.matricule}</span>
-      ),
-    },
-    {
-      key: "nom",
-      header: "Nom complet",
-      render: (candidat) => (
-        <span className="font-medium">
-          {candidat.user.first_name} {candidat.user.last_name}
-        </span>
-      ),
-    },
-    {
-      key: "email",
-      header: "Email",
-      render: (candidat) => (
-        <a
-          href={`mailto:${candidat.user.email}`}
-          className="text-primary hover:underline"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {candidat.user.email}
-        </a>
-      ),
-    },
-    {
-      key: "cycle",
-      header: "Cycle",
-      render: (candidat) => (
-        <Badge variant="outline">{CYCLE_LABELS[candidat.cycle]}</Badge>
-      ),
-    },
-    {
-      key: "departement",
-      header: "Département",
-      render: (candidat) => (
-        <Badge variant="secondary">
-          {candidat.departement ? candidat.departement.nom : "Non assigné"}
-        </Badge>
-      ),
-    },
-    {
-      key: "has_dossier",
-      header: "Dossier",
-      render: (candidat) => (
-        <Badge
-          variant={candidat.has_dossier ? "default" : "outline"}
-          className={candidat.has_dossier ? "bg-green-100 text-green-800 border-green-200" : ""}
-        >
-          {candidat.has_dossier ? "Oui" : "Non"}
-        </Badge>
-      ),
-    },
-  ];
-
-  // Gérer la suppression
-  const handleDelete = async () => {
-    if (!deleteDialog.candidat) return;
-
-    try {
-      await candidatService.delete(deleteDialog.candidat.id);
-
-      // Retirer de la liste locale
-      setCandidats((prev) => prev.filter((c) => c.id !== deleteDialog.candidat?.id));
-
-      toast.success(
-        `Candidat "${deleteDialog.candidat.user.first_name} ${deleteDialog.candidat.user.last_name}" supprimé`
-      );
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => candidatService.delete(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['candidats'] });
+      toast.success("Candidat supprimé avec succès");
       setDeleteDialog({ open: false, candidat: null });
-    } catch (error: any) {
-      console.error('Erreur lors de la suppression:', error);
-      toast.error('Erreur lors de la suppression du candidat');
-    }
+    },
+    onError: () => toast.error("Erreur lors de la suppression"),
+  });
+
+  const filteredCandidats = candidats.filter((candidat) => {
+    const searchMatch = candidat.user.first_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        candidat.user.last_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        candidat.matricule.toLowerCase().includes(searchQuery.toLowerCase());
+    const departementMatch = filterDepartement === "all" || candidat.departement?.id === filterDepartement;
+    const cycleMatch = filterCycle === "all" || candidat.cycle === filterCycle;
+    return searchMatch && departementMatch && cycleMatch;
+  });
+
+  const handleDelete = () => {
+    if (deleteDialog.candidat) deleteMutation.mutate(deleteDialog.candidat.id);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+  if (isLoadingCandidats) {
+    return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <PageHeader
-          title="Candidats"
-          description={`${candidats.length} candidat${candidats.length > 1 ? 's' : ''} enregistré${candidats.length > 1 ? 's' : ''}`}
-          icon={Users}
-          action={{
-            label: "Ajouter un candidat",
-            onClick: () => navigate("/candidats/nouveau"),
-          }}
-        >
-          {/* Filtre par département */}
-          <Select value={filterDepartement} onValueChange={setFilterDepartement}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filtrer par département" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les départements</SelectItem>
-              {departements.map((dept) => (
-                <SelectItem key={dept.id} value={dept.id}>
-                  {dept.nom}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Filtre par cycle */}
-          <Select value={filterCycle} onValueChange={setFilterCycle}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filtrer par cycle" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les cycles</SelectItem>
-              <SelectItem value="INGENIEUR">Ingénieur</SelectItem>
-              <SelectItem value="SCIENCE_INGENIEUR">Science de l'ingénieur</SelectItem>
-              <SelectItem value="MASTER_PRO">Master professionnel</SelectItem>
-            </SelectContent>
-          </Select>
-        </PageHeader>
-
-        <img
-          src={candidatsHeroImage}
-          alt="Illustration gestion des candidats"
-          className="hidden lg:block w-48 opacity-90"
-        />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight">Candidats</h1>
+            <p className="text-muted-foreground text-sm">Gérez les profils des candidats aux soutenances.</p>
+          </div>
+          <img src={candidatsHeroImage} alt="Gestion des candidats" className="w-32 h-auto hidden md:block"/>
       </div>
 
-      <DataTable
-        data={filteredCandidats}
-        columns={columns}
-        searchPlaceholder="Rechercher un candidat..."
-        onView={(candidat) => navigate(`/candidats/${candidat.id}`)}
-        onEdit={(candidat) => navigate(`/candidats/${candidat.id}/modifier`)}
-        onDelete={(candidat) => setDeleteDialog({ open: true, candidat })}
-        emptyMessage="Aucun candidat enregistré"
-      />
+      <Card>
+        <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row items-center justify-between mb-4 gap-4">
+                <Input
+                    placeholder="Rechercher par nom, prénom ou matricule..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="max-w-sm"
+                />
+                <div className="flex items-center gap-2">
+                    <Select value={filterDepartement} onValueChange={setFilterDepartement}>
+                        <SelectTrigger className="w-[200px]"><SelectValue placeholder="Département" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Tous les départements</SelectItem>
+                            {departements.map(d => <SelectItem key={d.id} value={d.id}>{d.nom}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={filterCycle} onValueChange={setFilterCycle}>
+                        <SelectTrigger className="w-[180px]"><SelectValue placeholder="Cycle" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Tous les cycles</SelectItem>
+                            <SelectItem value="INGENIEUR">Ingénieur</SelectItem>
+                            <SelectItem value="SCIENCE_INGENIEUR">Science de l'ingénieur</SelectItem>
+                            <SelectItem value="MASTER_PRO">Master professionnel</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Button onClick={() => navigate("/candidats/nouveau")}>
+                      <Plus className="mr-2 h-4 w-4" /> Ajouter
+                    </Button>
+                </div>
+            </div>
+            <div className="border rounded-md">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Nom Complet</TableHead>
+                            <TableHead>Département</TableHead>
+                            <TableHead>Cycle</TableHead>
+                            <TableHead>Dossier</TableHead>
+                            <TableHead className="w-[50px]"></TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {filteredCandidats.length > 0 ? filteredCandidats.map((candidat) => (
+                            <TableRow key={candidat.id} onClick={() => navigate(`/candidats/${candidat.id}`)} className="cursor-pointer">
+                                <TableCell>
+                                    <div className="font-medium">{candidat.user.first_name} {candidat.user.last_name}</div>
+                                    <div className="text-xs text-muted-foreground">{candidat.matricule}</div>
+                                </TableCell>
+                                <TableCell>{candidat.departement?.nom || "-"}</TableCell>
+                                <TableCell><Badge variant="outline">{CYCLE_LABELS[candidat.cycle]}</Badge></TableCell>
+                                <TableCell><Badge variant={candidat.has_dossier ? "default" : "secondary"}>{candidat.has_dossier ? "Oui" : "Non"}</Badge></TableCell>
+                                <TableCell>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}><MoreHorizontal className="h-4 w-4" /></Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/candidats/${candidat.id}/modifier`); }}>Modifier</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDeleteDialog({ open: true, candidat }); }} className="text-destructive">Supprimer</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        )) : (
+                            <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">Aucun candidat trouvé.</TableCell></TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+        </CardContent>
+      </Card>
 
       <ConfirmDialog
         open={deleteDialog.open}
         onOpenChange={(open) => setDeleteDialog({ open, candidat: null })}
         title="Supprimer le candidat"
         description={
-          deleteDialog.candidat
-            ? `Êtes-vous sûr de vouloir supprimer "${deleteDialog.candidat.user.first_name} ${deleteDialog.candidat.user.last_name}" ? Cette action supprimera également l'utilisateur associé.`
-            : ""
+          deleteDialog.candidat ? `Êtes-vous sûr de vouloir supprimer "${deleteDialog.candidat.user.first_name} ${deleteDialog.candidat.user.last_name}"? Cette action est irréversible.` : ""
         }
         confirmLabel="Supprimer"
         onConfirm={handleDelete}

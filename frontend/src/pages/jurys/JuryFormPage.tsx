@@ -5,25 +5,12 @@ import { ArrowLeft, Save, Plus, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import juryService from "@/services/juryService";
 import enseignantService from "@/services/enseignantService";
 import sessionService from "@/services/sessionService";
-import {
-  StatutJury,
-  RoleMembreJury,
-  STATUT_JURY_LABELS,
-  ROLE_MEMBRE_JURY_LABELS
-} from "@/types/models";
+import { StatutJury, RoleMembreJury, STATUT_JURY_LABELS, ROLE_MEMBRE_JURY_LABELS } from "@/types/models";
 
 const STATUTS_JURY: StatutJury[] = ['PROPOSE', 'VALIDE', 'ACTIF'];
 const ROLES_MEMBRE: RoleMembreJury[] = ['PRESIDENT', 'RAPPORTEUR', 'ENCADREUR', 'EXAMINATEUR'];
@@ -47,322 +34,85 @@ export default function JuryFormPage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Charger les enseignants disponibles
-  const { data: enseignants = [], isLoading: isLoadingEnseignants } = useQuery({
-    queryKey: ['enseignants'],
-    queryFn: () => enseignantService.getAll(),
-  });
+  const { data: enseignants = [] } = useQuery({ queryKey: ['enseignants'], queryFn: () => enseignantService.getAll() });
+  const { data: sessions = [] } = useQuery({ queryKey: ['sessions', 'open'], queryFn: () => sessionService.getAll({ statut: 'OUVERT' }) });
+  const { data: jury, isLoading: isLoadingJury } = useQuery({ queryKey: ['jurys', id], queryFn: () => juryService.getById(id!), enabled: isEditing });
 
-  // Charger les sessions disponibles (uniquement ouvertes)
-  const { data: sessions = [], isLoading: isLoadingSessions } = useQuery({
-    queryKey: ['sessions', 'open'],
-    queryFn: () => sessionService.getAll({ statut: 'OUVERT' }),
-  });
-
-  // Charger les données du jury si édition
-  const { data: jury, isLoading: isLoadingJury } = useQuery({
-    queryKey: ['jury', id],
-    queryFn: () => juryService.getById(id!),
-    enabled: isEditing,
-  });
-
-  // Remplir le formulaire avec les données chargées
   useEffect(() => {
     if (jury) {
       setFormData({
         nom: jury.nom,
         session_id: jury.session_id,
         statut: jury.statut,
-        membres_data: jury.composition?.map(m => ({
-          enseignant_id: m.enseignant_id,
-          role: m.role,
-        })) || [],
+        membres_data: jury.composition?.map(m => ({ enseignant_id: m.enseignant_id, role: m.role })) || [],
       });
     }
   }, [jury]);
 
-  // Mutation pour créer/modifier
   const mutation = useMutation({
     mutationFn: (data: typeof formData) => {
-      if (isEditing) {
-        // Pour l'édition, on ne peut changer que le nom et la session
-        return juryService.update(id!, {
-          nom: data.nom,
-          session_id: data.session_id,
-        });
-      } else {
-        return juryService.create(data);
-      }
+      return isEditing ? juryService.update(id!, { nom: data.nom, session_id: data.session_id }) : juryService.create(data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jurys'] });
-      toast.success(isEditing ? "Jury modifié avec succès" : "Jury créé avec succès");
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['jurys'] });
+      if(isEditing) await queryClient.invalidateQueries({ queryKey: ['jurys', id] });
+      toast.success(isEditing ? "Jury modifié" : "Jury créé");
       navigate("/jurys");
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.detail ||
-                     error?.response?.data?.message ||
-                     "Erreur lors de la sauvegarde";
-      toast.error(message);
-    },
+    onError: (error: any) => toast.error(error.response?.data?.detail || "Erreur de sauvegarde"),
   });
 
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.nom.trim()) {
-      newErrors.nom = "Le nom du jury est requis";
-    }
-    if (!formData.session_id) {
-      newErrors.session_id = "La session est requise";
-    }
-    if (!isEditing && formData.membres_data.length === 0) {
-      newErrors.membres = "Au moins un membre est requis";
-    }
-    // Vérifier que chaque membre a un enseignant et un rôle
-    formData.membres_data.forEach((membre, index) => {
-      if (!membre.enseignant_id) {
-        newErrors[`membre_${index}_enseignant`] = "Enseignant requis";
-      }
-      if (!membre.role) {
-        newErrors[`membre_${index}_role`] = "Rôle requis";
-      }
-    });
-    // Vérifier qu'il y a un président
-    const hasPresident = formData.membres_data.some((m) => m.role === "PRESIDENT");
-    if (!isEditing && formData.membres_data.length > 0 && !hasPresident) {
-      newErrors.president = "Le jury doit avoir un président";
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleAddMembre = () => {
-    setFormData({
-      ...formData,
-      membres_data: [...formData.membres_data, { enseignant_id: "", role: "" }],
-    });
-  };
-
-  const handleRemoveMembre = (index: number) => {
-    setFormData({
-      ...formData,
-      membres_data: formData.membres_data.filter((_, i) => i !== index),
-    });
-  };
-
+  const handleAddMembre = () => setFormData({ ...formData, membres_data: [...formData.membres_data, { enseignant_id: "", role: "" }] });
+  const handleRemoveMembre = (index: number) => setFormData({ ...formData, membres_data: formData.membres_data.filter((_, i) => i !== index) });
   const handleMembreChange = (index: number, field: keyof MembreJuryForm, value: string) => {
     const newMembres = [...formData.membres_data];
     newMembres[index] = { ...newMembres[index], [field]: value };
     setFormData({ ...formData, membres_data: newMembres });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
-
     mutation.mutate(formData);
   };
 
-  if (isLoadingJury || isLoadingEnseignants || isLoadingSessions) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (isLoadingJury) return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/jurys")}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {isEditing ? "Modifier le jury" : "Nouveau jury"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {isEditing ? "Modifiez la composition du jury" : "Créez un nouveau jury de soutenance"}
-          </p>
+      <div className="space-y-2">
+        <Button variant="ghost" size="sm" onClick={() => navigate("/jurys")} className="-ml-2"><ArrowLeft className="mr-2 h-4 w-4" />Retour à la liste</Button>
+        <h1 className="text-2xl font-bold tracking-tight">{isEditing ? "Modifier le jury" : "Nouveau jury"}</h1>
+        <p className="text-sm text-muted-foreground">Remplissez les informations ci-dessous.</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-8 pt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+          <div className="space-y-2 md:col-span-2"><Label htmlFor="nom">Nom du jury</Label><Input id="nom" value={formData.nom} onChange={e => setFormData({ ...formData, nom: e.target.value })} /></div>
+          <div className="space-y-2"><Label htmlFor="session_id">Session</Label><Select value={formData.session_id} onValueChange={v => setFormData({ ...formData, session_id: v })}><SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger><SelectContent>{sessions.map(s => <SelectItem key={s.id} value={s.id}>{s.titre}</SelectItem>)}</SelectContent></Select></div>
+          <div className="space-y-2"><Label htmlFor="statut">Statut</Label><Select value={formData.statut} onValueChange={v => setFormData({ ...formData, statut: v as StatutJury })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{STATUTS_JURY.map(s => <SelectItem key={s} value={s}>{STATUT_JURY_LABELS[s]}</SelectItem>)}</SelectContent></Select></div>
         </div>
-      </div>
 
-      <div className="max-w-3xl">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informations générales</CardTitle>
-              <CardDescription>Identifiez le jury et sa session</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="nom">
-                  Nom du jury <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="nom"
-                  placeholder="Jury Master Informatique 2024"
-                  value={formData.nom}
-                  onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                  className={errors.nom ? "border-destructive" : ""}
-                />
-                {errors.nom && <p className="text-sm text-destructive">{errors.nom}</p>}
+        {!isEditing && (
+          <div className="border-t pt-8 space-y-4">
+            <h2 className="text-lg font-semibold">Composition du jury</h2>
+            {formData.membres_data.map((membre, index) => (
+              <div key={index} className="flex gap-4 items-center p-3 border rounded-lg bg-background">
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2"><Label>Enseignant</Label><Select value={membre.enseignant_id} onValueChange={v => handleMembreChange(index, "enseignant_id", v)}><SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger><SelectContent>{enseignants.map(e => <SelectItem key={e.id} value={e.id}>{e.user.first_name} {e.user.last_name}</SelectItem>)}</SelectContent></Select></div>
+                  <div className="space-y-2"><Label>Rôle</Label><Select value={membre.role} onValueChange={v => handleMembreChange(index, "role", v)}><SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger><SelectContent>{ROLES_MEMBRE.map(r => <SelectItem key={r} value={r}>{ROLE_MEMBRE_JURY_LABELS[r]}</SelectItem>)}</SelectContent></Select></div>
+                </div>
+                <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveMembre(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
               </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="session_id">
-                    Session <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    value={formData.session_id}
-                    onValueChange={(value) => setFormData({ ...formData, session_id: value })}
-                  >
-                    <SelectTrigger className={errors.session_id ? "border-destructive" : ""}>
-                      <SelectValue placeholder="Sélectionner une session" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sessions.map((session) => (
-                        <SelectItem key={session.id} value={session.id}>
-                          {session.titre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.session_id && <p className="text-sm text-destructive">{errors.session_id}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="statut">Statut</Label>
-                  <Select
-                    value={formData.statut}
-                    onValueChange={(value) => setFormData({ ...formData, statut: value as StatutJury })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STATUTS_JURY.map((statut) => (
-                        <SelectItem key={statut} value={statut}>
-                          {STATUT_JURY_LABELS[statut]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Composition du jury</CardTitle>
-              <CardDescription>Ajoutez les membres et leurs rôles</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {errors.membres && (
-                <p className="text-sm text-destructive">{errors.membres}</p>
-              )}
-              {errors.president && (
-                <p className="text-sm text-destructive">{errors.president}</p>
-              )}
-
-              {formData.membres_data.map((membre, index) => (
-                <div key={index} className="flex gap-3 items-start p-3 border rounded-lg">
-                  <div className="flex-1 grid gap-3 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Enseignant</Label>
-                      <Select
-                        value={membre.enseignant_id}
-                        onValueChange={(value) => handleMembreChange(index, "enseignant_id", value)}
-                      >
-                        <SelectTrigger className={errors[`membre_${index}_enseignant`] ? "border-destructive" : ""}>
-                          <SelectValue placeholder="Sélectionner" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {enseignants
-                            .filter(
-                              (e) =>
-                                !formData.membres_data.some(
-                                  (m, i) => i !== index && m.enseignant_id === e.id
-                                )
-                            )
-                            .map((enseignant) => (
-                              <SelectItem key={enseignant.id} value={enseignant.id}>
-                                {enseignant.user.first_name} {enseignant.user.last_name} - {enseignant.grade}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Rôle</Label>
-                      <Select
-                        value={membre.role}
-                        onValueChange={(value) => handleMembreChange(index, "role", value)}
-                      >
-                        <SelectTrigger className={errors[`membre_${index}_role`] ? "border-destructive" : ""}>
-                          <SelectValue placeholder="Sélectionner" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ROLES_MEMBRE
-                            .filter(
-                              (role) =>
-                                // Afficher le rôle s'il n'est pas encore utilisé, ou si c'est le rôle actuel du membre
-                                !formData.membres_data.some(
-                                  (m, i) => i !== index && m.role === role
-                                )
-                            )
-                            .map((role) => (
-                              <SelectItem key={role} value={role}>
-                                {ROLE_MEMBRE_JURY_LABELS[role]}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => handleRemoveMembre(index)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-
-              <Button type="button" variant="outline" onClick={handleAddMembre} className="w-full">
-                <Plus className="mr-2 h-4 w-4" />
-                Ajouter un membre
-              </Button>
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-end gap-3">
-            <Button type="button" variant="outline" onClick={() => navigate("/jurys")}>
-              Annuler
-            </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Enregistrement...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Enregistrer
-                </>
-              )}
-            </Button>
+            ))}
+            <Button type="button" variant="outline" onClick={handleAddMembre} className="w-full"><Plus className="mr-2 h-4 w-4" />Ajouter un membre</Button>
           </div>
-        </form>
-      </div>
+        )}
+
+        <div className="flex justify-end gap-3 pt-6 border-t">
+          <Button type="button" variant="ghost" onClick={() => navigate("/jurys")}>Annuler</Button>
+          <Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enregistrement...</> : <><Save className="mr-2 h-4 w-4" /> Enregistrer</>}</Button>
+        </div>
+      </form>
     </div>
   );
 }

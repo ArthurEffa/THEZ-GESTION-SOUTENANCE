@@ -81,22 +81,8 @@ export default function CandidatsPage() {
                     className="max-w-sm"
                 />
                 <div className="flex items-center gap-2">
-                    <Select value={filterDepartement} onValueChange={setFilterDepartement}>
-                        <SelectTrigger className="w-[200px]"><SelectValue placeholder="Département" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Tous les départements</SelectItem>
-                            {departements.map(d => <SelectItem key={d.id} value={d.id}>{d.nom}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Select value={filterCycle} onValueChange={setFilterCycle}>
-                        <SelectTrigger className="w-[180px]"><SelectValue placeholder="Cycle" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Tous les cycles</SelectItem>
-                            <SelectItem value="INGENIEUR">Ingénieur</SelectItem>
-                            <SelectItem value="SCIENCE_INGENIEUR">Science de l'ingénieur</SelectItem>
-                            <SelectItem value="MASTER_PRO">Master professionnel</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <Select value={filterDepartement} onValueChange={setFilterDepartement}><SelectTrigger className="w-[200px]"><SelectValue placeholder="Département" /></SelectTrigger><SelectContent><SelectItem value="all">Tous les départements</SelectItem>{departements.map(d => <SelectItem key={d.id} value={d.id}>{d.nom}</SelectItem>)}</SelectContent></Select>
+                    <Select value={filterCycle} onValueChange={setFilterCycle}><SelectTrigger className="w-[180px]"><SelectValue placeholder="Cycle" /></SelectTrigger><SelectContent><SelectItem value="all">Tous les cycles</SelectItem><SelectItem value="INGENIEUR">Ingénieur</SelectItem><SelectItem value="SCIENCE_INGENIEUR">Science de l'ingénieur</SelectItem><SelectItem value="MASTER_PRO">Master professionnel</SelectItem></SelectContent></Select>
                     <Button onClick={() => navigate("/candidats/nouveau")}>
                       <Plus className="mr-2 h-4 w-4" /> Ajouter
                     </Button>

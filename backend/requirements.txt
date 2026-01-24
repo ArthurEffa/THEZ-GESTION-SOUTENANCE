@@ -1,41 +1,41 @@
 setuptools
 
 # Django Core
-Django==5.2.9
-djangorestframework==3.16.1
-django-cors-headers==4.3.0
-python-decouple==3.8
+Django>=5.2.9
+djangorestframework>=3.16.1
+django-cors-headers>=4.3.0
+python-decouple>=3.8
 
 # Authentication
-djangorestframework-simplejwt==5.5.1
+djangorestframework-simplejwt>=5.5.1
 
 # Database
-psycopg2-binary==2.9.9
+psycopg[binary]>=3.3.0
 
 # File Handling
-Pillow==12.0.0
+Pillow>=12.0.0
 
 # PDF Generation
-WeasyPrint==60.1
-reportlab==4.0.7
+WeasyPrint>=60.1
+reportlab>=4.0.7
 
 # API Documentation
-drf-yasg==1.21.7
+drf-yasg>=1.21.7
 
 # Filters
-django-filter==23.3
+django-filter>=23.3
 
 # Utils
-python-dateutil==2.8.2
-pytz==2023.3
+python-dateutil>=2.8.2
+pytz>=2023.3
 
 # Development
-django-debug-toolbar==4.2.0
-pytest==7.4.3
-pytest-django==4.7.0
+django-debug-toolbar>=4.2.0
+pytest>=7.4.3
+pytest-django>=4.7.0
 
 # Production
-gunicorn==23.0.0
-whitenoise==6.6.0
+gunicorn>=23.0.0
+whitenoise>=6.6.0
 
-dj-database-url==2.2.0
+dj-database-url>=2.2.0

@@ -17,7 +17,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge"; // Import du Badge
-import logoImage from "@/assets/logo.png";
+import logoImage from "@/assets/logo.jpg";
 
 const roleLabels: Record<string, string> = {
   admin: "Admin",
@@ -45,7 +45,7 @@ export function AppSidebar() {
         <div className="flex items-center justify-between">
           <div className={cn("flex items-center gap-2", collapsed && "justify-center w-full")}>
             <img src={logoImage} alt="Logo" className="h-8 w-8 object-contain"/>
-            {!collapsed && <span className="text-sm font-medium text-sidebar-foreground">GestSoutenance</span>}
+            {!collapsed && <span className="text-sm font-medium text-sidebar-foreground">THEZ</span>}
           </div>
           {!collapsed && <button className="p-1 rounded hover:bg-sidebar-accent text-sidebar-muted transition-colors" onClick={toggleSidebar}><ChevronsLeft className="h-4 w-4" /></button>}
           {collapsed && <button className="absolute -right-3 top-5 p-1 rounded-full bg-background border border-sidebar-border shadow-sm hover:bg-sidebar-accent text-sidebar-muted transition-colors" onClick={toggleSidebar}><ChevronsRight className="h-3 w-3" /></button>}

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -45,9 +45,9 @@
     --info: 220 100% 50%;
     --info-foreground: 0 0% 100%;
     
-    /* Border & Input - Very subtle */
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
+    /* Border & Input - Gris doux visible */
+    --border: 0 0% 80%;
+    --input: 0 0% 80%;
     --ring: 220 100% 50%;
     
     --radius: 0.375rem;

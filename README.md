@@ -1,63 +1,67 @@
-# Système de Gestion des Soutenances Académiques
+# THEZ - Gestion des Soutenances Academiques
 
-Plateforme web complète pour la digitalisation et l'automatisation du processus de gestion des soutenances académiques.
+Plateforme web complete pour la digitalisation et l'automatisation du processus de gestion des soutenances academiques.
 
-## 📋 Fonctionnalités
+**Planifiez. Gerez. Reussissez.**
 
-- **Gestion des utilisateurs** avec système RBAC (Admin, Candidat, Enseignant)
-- **Gestion des sessions** de soutenance par année académique
-- **Gestion des dossiers** de soutenance (dépôt, validation)
-- **Composition des jurys** (Président, Rapporteur, Examinateurs)
+## Fonctionnalites
+
+- **Gestion des utilisateurs** avec systeme RBAC (Admin, Etudiant, Jury, Encadreur)
+- **Gestion des sessions** de soutenance par annee academique
+- **Gestion des dossiers** de soutenance (depot, validation)
+- **Composition des jurys** (President, Rapporteur, Examinateurs)
 - **Planification intelligente** des soutenances (date, heure, salle)
-- **Système de notifications** automatiques
-- **Génération automatique** des procès-verbaux
+- **Systeme de notifications** automatiques
+- **Generation automatique** des proces-verbaux
 - **Documentation API** avec Swagger
 
-## 🛠️ Technologies
+## Technologies
 
 ### Backend
-- Django 4.2
+- Django 5.2
 - Django REST Framework
 - PostgreSQL
 - JWT Authentication (Simple JWT)
-- Swagger (drf-spectacular)
+- Swagger (drf-yasg)
 
 ### Frontend
-- React 18 + Vite
-- Material-UI
-- React Query
+- React 18 + TypeScript + Vite
+- Tailwind CSS
+- shadcn/ui
+- React Query (TanStack Query)
 - Axios
 
-## 📦 Installation
+## Installation
 
-### Prérequis
+### Prerequis
 - Python 3.12+
-- PostgreSQL
-- Node.js 18+ (pour le frontend)
+- PostgreSQL 15+
+- Node.js 18+
 
 ### Backend Setup
 
 1. **Cloner le repository**
 ```bash
-git clone <url-du-repo>
-cd GESTION\ DES\ SOUTENANCES
+git clone git@github.com:ArthurEffa/NEW-GESTION-SOUTENANCE-TP-ENSPD.git
+cd "GESTION DES SOUTENANCES"
 ```
 
-2. **Créer un environnement virtuel (optionnel)**
+2. **Creer un environnement virtuel**
 ```bash
 python -m venv venv
-source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate     # Windows
+source venv/bin/activate  # Linux/Mac
 ```
 
-3. **Installer les dépendances**
+3. **Installer les dependances**
 ```bash
+cd backend
 pip install -r requirements.txt
 ```
 
 4. **Configurer les variables d'environnement**
 
-Créer un fichier `.env` dans le dossier `backend/gestion_soutenance/` :
+Creer un fichier `.env` dans le dossier `backend/` :
 
 ```env
 # Django
@@ -66,12 +70,7 @@ DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
 
 # Database PostgreSQL
-DB_ENGINE=django.db.backends.postgresql
-DB_NAME=gestion_soutenances
-DB_USER=postgres
-DB_PASSWORD=votre-mot-de-passe
-DB_HOST=localhost
-DB_PORT=5432
+DATABASE_URL=postgresql://postgres:votre-mot-de-passe@localhost:5432/appsoutenance2
 
 # CORS
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
@@ -79,129 +78,125 @@ CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 # Email (optionnel)
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
-EMAIL_HOST_USER=votre-email@example.com
-EMAIL_HOST_PASSWORD=votre-mot-de-passe-email
+EMAIL_HOST_USER=
+EMAIL_HOST_PASSWORD=
 ```
 
-5. **Créer la base de données PostgreSQL**
+5. **Creer la base de donnees PostgreSQL**
 ```bash
-createdb gestion_soutenances
+createdb appsoutenance2
 ```
 
 6. **Appliquer les migrations**
 ```bash
-cd backend/gestion_soutenance
 python manage.py makemigrations
 python manage.py migrate
 ```
 
-7. **Créer un superutilisateur**
+7. **Creer un superutilisateur**
 ```bash
 python manage.py createsuperuser
 ```
 
-8. **Lancer le serveur de développement**
+8. **Lancer le serveur**
 ```bash
 python manage.py runserver
 ```
 
-Le backend sera accessible à : `http://localhost:8000`
+Backend accessible sur : `http://localhost:8000`
 
-## 📚 Documentation API
+### Frontend Setup
 
-Une fois le serveur lancé, accédez à :
+1. **Installer les dependances**
+```bash
+cd frontend
+npm install
+```
+
+2. **Lancer le serveur de developpement**
+```bash
+npm run dev
+```
+
+Frontend accessible sur : `http://localhost:5173`
+
+## Documentation API
+
+Une fois le backend lance :
 - **Swagger UI** : http://localhost:8000/api/docs/
 - **ReDoc** : http://localhost:8000/api/redoc/
-- **Schema OpenAPI** : http://localhost:8000/api/schema/
 
-## 🔑 Endpoints Principaux
+## Endpoints Principaux
 
 ### Authentification
-- `POST /api/v1/auth/login/` - Connexion (JWT)
-- `POST /api/v1/auth/refresh/` - Rafraîchir le token
-- `POST /api/v1/auth/logout/` - Déconnexion
+- `POST /api/auth/login/` - Connexion (JWT)
+- `POST /api/auth/refresh/` - Rafraichir le token
+- `POST /api/auth/logout/` - Deconnexion
 
 ### Ressources
-- `/api/v1/users/` - Utilisateurs
-- `/api/v1/candidats/` - Profils candidats
-- `/api/v1/enseignants/` - Profils enseignants
-- `/api/v1/sessions/` - Sessions de soutenance
-- `/api/v1/salles/` - Salles
-- `/api/v1/dossiers/` - Dossiers de soutenance
-- `/api/v1/jurys/` - Jurys
-- `/api/v1/soutenances/` - Soutenances
-- `/api/v1/notifications/` - Notifications
-- `/api/v1/commentaires/` - Commentaires
+- `/api/users/` - Utilisateurs
+- `/api/etudiants/` - Etudiants
+- `/api/enseignants/` - Enseignants
+- `/api/sessions/` - Sessions de soutenance
+- `/api/salles/` - Salles
+- `/api/dossiers/` - Dossiers de soutenance
+- `/api/jurys/` - Jurys
+- `/api/soutenances/` - Soutenances
 
-## 🔒 Sécurité
-
-- Authentification JWT avec tokens d'accès et de rafraîchissement
-- Permissions basées sur les rôles (RBAC)
-- Validation des fichiers uploadés (PDF uniquement pour les mémoires)
-- CORS configuré pour les domaines autorisés
-- Variables d'environnement pour les secrets
-
-## 📁 Structure du Projet
+## Structure du Projet
 
 ```
 GESTION DES SOUTENANCES/
 ├── backend/
-│   └── gestion_soutenance/
-│       ├── gestion_soutenance/      # Configuration Django
-│       │   ├── settings.py
-│       │   ├── urls.py
-│       │   └── wsgi.py
-│       ├── app_soutenance/          # Application principale
-│       │   ├── models.py            # 13 modèles
-│       │   ├── serializers.py       # Serializers DRF
-│       │   ├── views.py             # ViewSets API
-│       │   ├── permissions.py       # Permissions RBAC
-│       │   ├── urls.py              # Routes API
-│       │   └── admin.py             # Admin Django
-│       └── manage.py
-├── frontend/                        # Application React (à venir)
-├── requirements.txt                 # Dépendances Python
-├── .gitignore
-├── .env.example
+│   ├── gestion_soutenance/      # Configuration Django
+│   │   ├── settings.py
+│   │   ├── urls.py
+│   │   └── wsgi.py
+│   ├── app_soutenance/          # Application principale
+│   │   ├── models.py
+│   │   ├── serializers.py
+│   │   ├── views.py
+│   │   ├── permissions.py
+│   │   └── urls.py
+│   ├── .env                     # Variables d'environnement
+│   └── manage.py
+├── frontend/
+│   ├── src/
+│   │   ├── components/          # Composants React
+│   │   ├── pages/               # Pages de l'application
+│   │   ├── contexts/            # Contextes React
+│   │   ├── hooks/               # Hooks personnalises
+│   │   ├── services/            # Services API
+│   │   └── assets/              # Images et assets
+│   ├── index.html
+│   └── package.json
 └── README.md
 ```
 
-## 👥 Rôles et Permissions
+## Roles et Permissions
 
-### Admin
-- Gestion complète du système
-- Création des sessions et salles
-- Validation des dossiers
-- Composition des jurys
-- Planification des soutenances
-- Génération des PV
+| Role | Permissions |
+|------|-------------|
+| **Admin** | Gestion complete, validation dossiers, composition jurys, planification |
+| **Etudiant** | Creation dossier, upload memoire, consultation soutenance |
+| **Jury** | Consultation dossiers, participation aux jurys |
+| **Encadreur** | Suivi des etudiants encadres |
 
-### Candidat
-- Création de son dossier
-- Upload du mémoire et annexes
-- Consultation de sa soutenance
-- Réception des notifications
+## Workflow
 
-### Enseignant
-- Consultation des dossiers (encadreur)
-- Participation aux jurys
-- Consultation du planning
-
-## 🚀 Workflow Complet
-
-1. **Admin** crée une session de soutenance
-2. **Candidat** crée son dossier et upload son mémoire
+1. **Admin** cree une session de soutenance
+2. **Etudiant** cree son dossier et upload son memoire
 3. **Admin** valide le dossier
 4. **Admin** compose le jury
-5. **Admin** crée et planifie la soutenance
-6. **Tous** reçoivent des notifications
-7. **Soutenance** se déroule
-8. **PV** est généré automatiquement
+5. **Admin** planifie la soutenance
+6. **Notifications** envoyees a tous les concernes
+7. **Soutenance** se deroule
+8. **PV** genere automatiquement
 
-## 📝 Licence
+## Auteur
 
-Ce projet est développé dans un cadre académique.
+Arthur Effa - [@ArthurEffa](https://github.com/ArthurEffa)
 
-## 👨‍💻 Auteur
+## Licence
 
-[Votre Nom]
+Projet academique - ENSPD

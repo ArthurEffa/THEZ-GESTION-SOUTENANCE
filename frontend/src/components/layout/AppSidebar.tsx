@@ -61,12 +61,10 @@ export function AppSidebar() {
             return (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton asChild tooltip={collapsed ? item.title : undefined} className={cn("h-8 transition-colors duration-100", isActive ? "bg-sidebar-accent text-sidebar-foreground font-medium" : "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground")}>
-                  <NavLink to={item.url} className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-2">
-                        <item.icon className="h-4 w-4" />
-                        <span className="text-sm">{item.title}</span>
-                    </div>
-                    {!collapsed && showBadge && <Badge className="h-5">{dossiersEnAttenteCount}</Badge>}
+                  <NavLink to={item.url}>
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span className="text-sm">{item.title}</span>
+                    {!collapsed && showBadge && <Badge className="ml-auto h-5">{dossiersEnAttenteCount}</Badge>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>

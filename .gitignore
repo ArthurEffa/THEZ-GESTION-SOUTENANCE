@@ -51,6 +51,7 @@ staticfiles/
 # OS
 .DS_Store
 Thumbs.db
+NUL
 
 # Database
 *.sql

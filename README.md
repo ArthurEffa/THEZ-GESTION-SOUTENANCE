@@ -61,7 +61,13 @@ pip install -r requirements.txt
 
 4. **Configurer les variables d'environnement**
 
-Creer un fichier `.env` dans le dossier `backend/` :
+Copier le fichier d'exemple et l'adapter :
+
+```bash
+cp ../.env.example .env
+```
+
+Ou creer manuellement un fichier `.env` dans le dossier `backend/` :
 
 ```env
 # Django
@@ -73,7 +79,7 @@ ALLOWED_HOSTS=localhost,127.0.0.1
 DATABASE_URL=postgresql://postgres:votre-mot-de-passe@localhost:5432/appsoutenance2
 
 # CORS
-CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:8080
 
 # Email (optionnel)
 EMAIL_HOST=smtp.gmail.com
@@ -81,6 +87,9 @@ EMAIL_PORT=587
 EMAIL_HOST_USER=
 EMAIL_HOST_PASSWORD=
 ```
+
+> **Important :** Le `SECRET_KEY` est obligatoire. Vous pouvez en generer une avec :
+> `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`
 
 5. **Creer la base de donnees PostgreSQL**
 ```bash
@@ -113,12 +122,22 @@ cd frontend
 npm install
 ```
 
-2. **Lancer le serveur de developpement**
+2. **Configurer les variables d'environnement**
+
+Creer un fichier `.env` dans le dossier `frontend/` :
+
+```env
+VITE_API_URL=http://localhost:8000/api
+```
+
+> Vous pouvez aussi copier le fichier d'exemple : `cp .env.example .env`
+
+3. **Lancer le serveur de developpement**
 ```bash
 npm run dev
 ```
 
-Frontend accessible sur : `http://localhost:5173`
+Frontend accessible sur : `http://localhost:8080`
 
 ## Documentation API
 

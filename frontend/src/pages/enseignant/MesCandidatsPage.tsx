@@ -1,27 +1,19 @@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
-import { 
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
+import {
   GraduationCap,
   Building2,
   FileText,
-  ChevronRight
+  ChevronRight,
+  Loader2,
 } from "lucide-react";
 import { getDepartmentColor } from "@/config/departments";
-
-// Données de démonstration - candidats encadrés
-const candidatsEncadres = [
-  { id: "1", nom: "Martin", prenom: "Pierre", departement: "Génie Informatique & Télécommunications", titreMemoire: "Application mobile de suivi sportif", statut: "VALIDE" },
-  { id: "2", nom: "Dupont", prenom: "Marie", departement: "Génie Informatique & Télécommunications", titreMemoire: "Système de gestion IoT", statut: "DEPOSE" },
-];
-
-// Données de démonstration - candidats du département
-const candidatsDepartement = [
-  { id: "1", nom: "Martin", prenom: "Pierre", titreMemoire: "Application mobile de suivi sportif", encadreur: "Dr. Koffi", statut: "VALIDE" },
-  { id: "2", nom: "Dupont", prenom: "Marie", titreMemoire: "Système de gestion IoT", encadreur: "Dr. Kouadio", statut: "DEPOSE" },
-  { id: "3", nom: "Bernard", prenom: "Jean", titreMemoire: "Analyse de données avec ML", encadreur: "Pr. Mensah", statut: "BROUILLON" },
-  { id: "4", nom: "Konan", prenom: "Aya", titreMemoire: "Plateforme e-learning", encadreur: "Dr. Koffi", statut: "VALIDE" },
-];
+import { STATUT_DOSSIER_LABELS, type DossierSoutenance } from "@/types/models";
+import dossierService from "@/services/dossierService";
+import candidatService from "@/services/candidatService";
 
 const statutConfig: Record<string, { label: string; color: string }> = {
   VALIDE: { label: "Validé", color: "bg-emerald-100 text-emerald-700" },
@@ -32,6 +24,51 @@ const statutConfig: Record<string, { label: string; color: string }> = {
 
 export default function MesCandidatsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Dossiers encadrés (le backend filtre par encadreur connecté)
+  const { data: dossiers = [], isLoading: isLoadingDossiers } = useQuery({
+    queryKey: ["mesDossiers"],
+    queryFn: () => dossierService.getAll(),
+  });
+
+  // Tous les candidats visibles par l'enseignant (départements + encadrés + jury)
+  const { data: candidats = [], isLoading: isLoadingCandidats } = useQuery({
+    queryKey: ["mesCandidats"],
+    queryFn: () => candidatService.getAll(),
+  });
+
+  const isLoading = isLoadingDossiers || isLoadingCandidats;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  // Candidats encadrés = ceux qui ont un dossier encadré par l'enseignant
+  const candidatsEncadres = dossiers.map((d) => ({
+    id: d.candidat.id,
+    nom: d.candidat.user.last_name,
+    prenom: d.candidat.user.first_name,
+    departement: d.candidat.departement?.nom || "",
+    titreMemoire: d.titre_memoire,
+    statut: d.statut,
+    dossierId: d.id,
+  }));
+
+  // Candidats du département = tous les candidats visibles moins ceux déjà dans "encadrés"
+  const encadresIds = new Set(candidatsEncadres.map((c) => c.id));
+  const candidatsDepartement = candidats
+    .filter((c) => !encadresIds.has(c.id))
+    .map((c) => ({
+      id: c.id,
+      nom: c.user.last_name,
+      prenom: c.user.first_name,
+      departement: c.departement?.nom || "",
+    }));
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -60,14 +97,17 @@ export default function MesCandidatsPage() {
         {/* Candidats encadrés */}
         <TabsContent value="encadres" className="space-y-1 mt-4">
           {candidatsEncadres.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground text-sm">
+            <div className="text-center py-12 text-muted-foreground text-sm border rounded-lg border-dashed">
               Aucun candidat encadré
             </div>
           ) : (
             <div className="border rounded-lg divide-y">
               {candidatsEncadres.map((candidat) => {
                 const deptColor = getDepartmentColor(candidat.departement);
-                const status = statutConfig[candidat.statut];
+                const status = statutConfig[candidat.statut] || {
+                  label: candidat.statut,
+                  color: "bg-muted text-muted-foreground",
+                };
                 return (
                   <div
                     key={candidat.id}
@@ -76,13 +116,23 @@ export default function MesCandidatsPage() {
                   >
                     <div className="space-y-1 min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{candidat.prenom} {candidat.nom}</span>
-                        <Badge className={`text-[10px] font-normal ${status.color}`}>
+                        <span className="font-medium text-sm">
+                          {candidat.prenom} {candidat.nom}
+                        </span>
+                        <Badge
+                          className={`text-[10px] font-normal ${status.color}`}
+                        >
                           {status.label}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">{candidat.titreMemoire}</p>
-                      <span className={`text-[10px] ${deptColor.text}`}>{candidat.departement}</span>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {candidat.titreMemoire}
+                      </p>
+                      {candidat.departement && (
+                        <span className={`text-[10px] ${deptColor.text}`}>
+                          {candidat.departement}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <FileText className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -98,31 +148,34 @@ export default function MesCandidatsPage() {
         {/* Candidats du département */}
         <TabsContent value="departement" className="space-y-1 mt-4">
           {candidatsDepartement.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground text-sm">
+            <div className="text-center py-12 text-muted-foreground text-sm border rounded-lg border-dashed">
               Aucun candidat dans le département
             </div>
           ) : (
             <div className="border rounded-lg divide-y">
               {candidatsDepartement.map((candidat) => {
-                const status = statutConfig[candidat.statut];
+                const deptColor = getDepartmentColor(candidat.departement);
                 return (
                   <div
                     key={candidat.id}
                     className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors cursor-pointer group"
-                    onClick={() => navigate("/memoires")}
+                    onClick={() =>
+                      navigate(`/candidats/${candidat.id}`)
+                    }
                   >
                     <div className="space-y-1 min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{candidat.prenom} {candidat.nom}</span>
-                        <Badge className={`text-[10px] font-normal ${status.color}`}>
-                          {status.label}
-                        </Badge>
+                        <span className="font-medium text-sm">
+                          {candidat.prenom} {candidat.nom}
+                        </span>
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">{candidat.titreMemoire}</p>
-                      <p className="text-[10px] text-muted-foreground">Encadreur: {candidat.encadreur}</p>
+                      {candidat.departement && (
+                        <span className={`text-[10px] ${deptColor.text}`}>
+                          {candidat.departement}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <FileText className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                       <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   </div>

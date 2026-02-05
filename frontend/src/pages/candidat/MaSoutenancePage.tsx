@@ -1,33 +1,26 @@
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardList, Calendar, MapPin, Clock, Users, AlertCircle } from "lucide-react";
+import { ClipboardList, Calendar, MapPin, Clock, Users, AlertCircle, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-
-// Données de démonstration - à remplacer par les vraies données
-const maSoutenance = {
-  hasAssignment: true, // Passer à false pour simuler "pas encore planifié"
-  date: "2024-06-15",
-  heureDebut: "10:00",
-  heureFin: "11:30",
-  salle: {
-    nom: "Salle A102",
-    batiment: "Bâtiment A",
-    capacite: 30,
-  },
-  jury: [
-    { nom: "Dr. Martin", prenom: "Jean", role: "Président" },
-    { nom: "Dr. Dubois", prenom: "Marie", role: "Rapporteur" },
-    { nom: "Pr. Bernard", prenom: "Pierre", role: "Examinateur" },
-  ],
-  encadreur: { nom: "Dr. Lefebvre", prenom: "Sophie" },
-  status: "PLANIFIEE" as const,
-};
+import { useGetMaSoutenance } from "@/hooks/me-hooks";
+import { STATUT_SOUTENANCE_LABELS, ROLE_MEMBRE_JURY_LABELS } from "@/types/models";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 export default function MaSoutenancePage() {
   const { user } = useAuth();
+  const { data: soutenance, isLoading } = useGetMaSoutenance();
 
-  if (!maSoutenance.hasAssignment) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!soutenance || !soutenance.date_heure) {
     return (
       <div className="space-y-6">
         <PageHeader
@@ -35,13 +28,13 @@ export default function MaSoutenancePage() {
           description="Suivez les détails de votre soutenance"
           icon={ClipboardList}
         />
-        
+
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16">
             <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">Aucune soutenance planifiée</h3>
             <p className="text-muted-foreground text-center max-w-md">
-              Votre soutenance n'a pas encore été planifiée par l'administration. 
+              Votre soutenance n'a pas encore été planifiée par l'administration.
               Vous recevrez une notification dès qu'elle sera programmée.
             </p>
           </CardContent>
@@ -49,6 +42,10 @@ export default function MaSoutenancePage() {
       </div>
     );
   }
+
+  const dateHeure = new Date(soutenance.date_heure);
+  const membres = soutenance.jury?.composition || [];
+  const encadreur = soutenance.dossier?.encadreur;
 
   return (
     <div className="space-y-6">
@@ -72,12 +69,7 @@ export default function MaSoutenancePage() {
               <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
                 <p className="font-medium">
-                  {new Date(maSoutenance.date).toLocaleDateString("fr-FR", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
+                  {format(dateHeure, "EEEE d MMMM yyyy", { locale: fr })}
                 </p>
                 <p className="text-sm text-muted-foreground">Date de la soutenance</p>
               </div>
@@ -87,7 +79,9 @@ export default function MaSoutenancePage() {
               <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
                 <p className="font-medium">
-                  {maSoutenance.heureDebut} - {maSoutenance.heureFin}
+                  {format(dateHeure, "HH'h'mm", { locale: fr })}
+                  {" — "}
+                  {soutenance.duree_minutes} min
                 </p>
                 <p className="text-sm text-muted-foreground">Horaire</p>
               </div>
@@ -96,10 +90,16 @@ export default function MaSoutenancePage() {
             <div className="flex items-start gap-3">
               <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
-                <p className="font-medium">{maSoutenance.salle.nom}</p>
-                <p className="text-sm text-muted-foreground">
-                  {maSoutenance.salle.batiment} • Capacité: {maSoutenance.salle.capacite} places
-                </p>
+                {soutenance.salle ? (
+                  <>
+                    <p className="font-medium">{soutenance.salle.nom}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {soutenance.salle.batiment} — Capacité : {soutenance.salle.capacite} places
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">Salle non définie</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -115,33 +115,45 @@ export default function MaSoutenancePage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {maSoutenance.jury.map((membre, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{membre.prenom} {membre.nom}</p>
-                    <p className="text-sm text-muted-foreground">{membre.role}</p>
+              {membres.length > 0 ? (
+                membres.map((membre) => (
+                  <div key={membre.id} className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">
+                        {membre.enseignant.user.first_name} {membre.enseignant.user.last_name}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {ROLE_MEMBRE_JURY_LABELS[membre.role]}
+                      </p>
+                    </div>
+                    <Badge variant="outline">
+                      {ROLE_MEMBRE_JURY_LABELS[membre.role]}
+                    </Badge>
                   </div>
-                  <Badge variant="outline">{membre.role}</Badge>
-                </div>
-              ))}
-              
-              <div className="border-t pt-4 mt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">
-                      {maSoutenance.encadreur.prenom} {maSoutenance.encadreur.nom}
-                    </p>
-                    <p className="text-sm text-muted-foreground">Encadreur</p>
+                ))
+              ) : (
+                <p className="text-muted-foreground text-sm">Jury non encore assigné</p>
+              )}
+
+              {encadreur && (
+                <div className="border-t pt-4 mt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">
+                        {encadreur.user.first_name} {encadreur.user.last_name}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Encadreur</p>
+                    </div>
+                    <Badge className="bg-primary/10 text-primary">Encadreur</Badge>
                   </div>
-                  <Badge className="bg-primary/10 text-primary">Encadreur</Badge>
                 </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Informations candidat */}
+      {/* Récapitulatif */}
       <Card>
         <CardHeader>
           <CardTitle>Récapitulatif</CardTitle>
@@ -151,19 +163,25 @@ export default function MaSoutenancePage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <p className="text-sm text-muted-foreground">Candidat</p>
-              <p className="font-medium">{user?.firstName} {user?.lastName}</p>
+              <p className="font-medium">
+                {user?.firstName} {user?.lastName}
+              </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Statut</p>
-              <Badge className="bg-warning/10 text-warning">Planifiée</Badge>
+              <Badge className="bg-warning/10 text-warning">
+                {STATUT_SOUTENANCE_LABELS[soutenance.statut]}
+              </Badge>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Durée prévue</p>
-              <p className="font-medium">1h30</p>
+              <p className="font-medium">{soutenance.duree_minutes} min</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Membres du jury</p>
-              <p className="font-medium">{maSoutenance.jury.length} membres</p>
+              <p className="font-medium">
+                {membres.length} membre{membres.length > 1 ? "s" : ""}
+              </p>
             </div>
           </div>
         </CardContent>

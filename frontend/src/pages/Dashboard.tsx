@@ -1,79 +1,96 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
 import { StatCard } from "@/components/common/StatCard";
 import { StatusBadge, SoutenanceStatus } from "@/components/common/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Users, 
-  Calendar, 
-  CheckCircle2, 
-  Clock, 
+import {
+  Users,
+  Calendar,
+  CheckCircle2,
+  Clock,
   GraduationCap,
   Building2,
   UserCheck,
-  ArrowRight
+  ArrowRight,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import candidatService from "@/services/candidatService";
+import soutenanceService from "@/services/soutenanceService";
+import departementService from "@/services/departementService";
+import salleService from "@/services/salleService";
+import juryService from "@/services/juryService";
 import dashboardHeroImg from "@/assets/illustrations/filieres-hero.png";
-// Demo data
-const upcomingSoutenances = [
-  {
-    id: "1",
-    date: "15 Déc 2024",
-    heure: "09:00",
-    candidat: "Marie Martin",
-    departement: "Informatique",
-    salle: "A101",
-    status: "PLANIFIEE" as SoutenanceStatus,
-  },
-  {
-    id: "2",
-    date: "15 Déc 2024",
-    heure: "10:30",
-    candidat: "Paul Dubois",
-    departement: "Génie Civil",
-    salle: "B204",
-    status: "PLANIFIEE" as SoutenanceStatus,
-  },
-  {
-    id: "3",
-    date: "15 Déc 2024",
-    heure: "14:00",
-    candidat: "Sophie Lefebvre",
-    departement: "Informatique",
-    salle: "A101",
-    status: "PLANIFIEE" as SoutenanceStatus,
-  },
-  {
-    id: "4",
-    date: "16 Déc 2024",
-    heure: "09:00",
-    candidat: "Lucas Bernard",
-    departement: "Électronique",
-    salle: "C302",
-    status: "PLANIFIEE" as SoutenanceStatus,
-  },
-  {
-    id: "5",
-    date: "16 Déc 2024",
-    heure: "11:00",
-    candidat: "Emma Petit",
-    departement: "Mécanique",
-    salle: "A101",
-    status: "PLANIFIEE" as SoutenanceStatus,
-  },
-];
-
-const recentActivity = [
-  { action: "Nouvelle soutenance planifiée", detail: "Marie Martin - 15 Déc", time: "Il y a 2h" },
-  { action: "Jury assigné", detail: "Dr. Dupont → Paul Dubois", time: "Il y a 3h" },
-  { action: "Mémoire déposé", detail: "Sophie Lefebvre", time: "Il y a 5h" },
-  { action: "Salle modifiée", detail: "B204 → A101", time: "Hier" },
-];
 
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const { data: candidats = [], isLoading: l1 } = useQuery({
+    queryKey: ["candidats"],
+    queryFn: () => candidatService.getAll(),
+  });
+
+  const { data: soutenances = [], isLoading: l2 } = useQuery({
+    queryKey: ["soutenances"],
+    queryFn: () => soutenanceService.getAll(),
+  });
+
+  const { data: departements = [], isLoading: l3 } = useQuery({
+    queryKey: ["departements"],
+    queryFn: () => departementService.getAll(),
+  });
+
+  const { data: salles = [], isLoading: l4 } = useQuery({
+    queryKey: ["salles"],
+    queryFn: () => salleService.getAll(),
+  });
+
+  const { data: jurys = [], isLoading: l5 } = useQuery({
+    queryKey: ["jurys"],
+    queryFn: () => juryService.getAll(),
+  });
+
+  const isLoading = l1 || l2 || l3 || l4 || l5;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  // Stats calculées
+  const nbCandidats = candidats.length;
+  const nbSoutenances = soutenances.length;
+  const soutenancesPlanifiees = soutenances.filter(
+    (s) => s.statut === "PLANIFIEE"
+  );
+  const soutenancesTerminees = soutenances.filter(
+    (s) => s.statut === "TERMINEE"
+  );
+
+  // Prochaines soutenances (planifiées, triées par date)
+  const upcoming = soutenancesPlanifiees
+    .filter((s) => s.date_heure)
+    .sort(
+      (a, b) =>
+        new Date(a.date_heure!).getTime() - new Date(b.date_heure!).getTime()
+    )
+    .slice(0, 5);
+
+  // Soutenances récentes (terminées les plus récentes)
+  const recentCompleted = soutenancesTerminees
+    .filter((s) => s.date_heure)
+    .sort(
+      (a, b) =>
+        new Date(b.date_heure!).getTime() - new Date(a.date_heure!).getTime()
+    )
+    .slice(0, 4);
 
   return (
     <div className="space-y-6">
@@ -88,9 +105,9 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="hidden lg:flex items-center justify-center w-40 h-40 overflow-hidden">
-          <img 
-            src={dashboardHeroImg} 
-            alt="Gestion des soutenances" 
+          <img
+            src={dashboardHeroImg}
+            alt="Gestion des soutenances"
             className="w-full h-full object-cover object-top"
           />
         </div>
@@ -100,28 +117,27 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Candidats"
-          value="124"
-          subtitle="En fin d'études"
+          value={nbCandidats}
+          subtitle="Enregistrés"
           icon={Users}
-          trend={{ value: 12, isPositive: true }}
         />
         <StatCard
           title="Soutenances"
-          value="98"
-          subtitle="Total planifiées"
+          value={nbSoutenances}
+          subtitle="Total créées"
           icon={Calendar}
           iconClassName="bg-info/10"
         />
         <StatCard
-          title="En attente"
-          value="45"
-          subtitle="À venir cette semaine"
+          title="Planifiées"
+          value={soutenancesPlanifiees.length}
+          subtitle="À venir"
           icon={Clock}
           iconClassName="bg-warning/10"
         />
         <StatCard
           title="Terminées"
-          value="53"
+          value={soutenancesTerminees.length}
           subtitle="Soutenances validées"
           icon={CheckCircle2}
           iconClassName="bg-success/10"
@@ -140,13 +156,15 @@ export default function Dashboard() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium">Départements</p>
-              <p className="text-xs text-muted-foreground">8 départements</p>
+              <p className="text-xs text-muted-foreground">
+                {departements.length} département{departements.length > 1 ? "s" : ""}
+              </p>
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
           </CardContent>
         </Card>
-        
-        <Card 
+
+        <Card
           className="card-hover cursor-pointer group"
           onClick={() => navigate("/salles")}
         >
@@ -156,13 +174,15 @@ export default function Dashboard() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium">Salles</p>
-              <p className="text-xs text-muted-foreground">12 salles</p>
+              <p className="text-xs text-muted-foreground">
+                {salles.length} salle{salles.length > 1 ? "s" : ""}
+              </p>
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-info transition-colors" />
           </CardContent>
         </Card>
-        
-        <Card 
+
+        <Card
           className="card-hover cursor-pointer group"
           onClick={() => navigate("/jurys")}
         >
@@ -172,12 +192,14 @@ export default function Dashboard() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium">Jurys</p>
-              <p className="text-xs text-muted-foreground">24 membres</p>
+              <p className="text-xs text-muted-foreground">
+                {jurys.length} jury{jurys.length > 1 ? "s" : ""}
+              </p>
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-success transition-colors" />
           </CardContent>
         </Card>
-        
+
         <Card
           className="card-hover cursor-pointer group"
           onClick={() => navigate("/candidats")}
@@ -188,7 +210,9 @@ export default function Dashboard() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium">Candidats</p>
-              <p className="text-xs text-muted-foreground">124 inscrits</p>
+              <p className="text-xs text-muted-foreground">
+                {nbCandidats} inscrit{nbCandidats > 1 ? "s" : ""}
+              </p>
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-warning transition-colors" />
           </CardContent>
@@ -203,9 +227,9 @@ export default function Dashboard() {
             <CardTitle className="text-lg font-semibold">
               Prochaines soutenances
             </CardTitle>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="text-primary"
               onClick={() => navigate("/soutenances")}
             >
@@ -214,61 +238,96 @@ export default function Dashboard() {
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {upcomingSoutenances.map((soutenance) => (
-                <div
-                  key={soutenance.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex flex-col items-center justify-center w-14 h-14 rounded-lg bg-primary/10">
-                      <span className="text-xs text-muted-foreground">
-                        {soutenance.date.split(" ")[0]}
-                      </span>
-                      <span className="text-sm font-bold text-primary">
-                        {soutenance.date.split(" ")[1]}
-                      </span>
+            {upcoming.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Aucune soutenance planifiée à venir
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {upcoming.map((soutenance) => {
+                  const dateHeure = new Date(soutenance.date_heure!);
+                  return (
+                    <div
+                      key={soutenance.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
+                      onClick={() =>
+                        navigate(`/soutenances/${soutenance.id}`)
+                      }
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex flex-col items-center justify-center w-14 h-14 rounded-lg bg-primary/10">
+                          <span className="text-xs text-muted-foreground">
+                            {format(dateHeure, "dd")}
+                          </span>
+                          <span className="text-sm font-bold text-primary">
+                            {format(dateHeure, "MMM", { locale: fr })}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-medium">
+                            {soutenance.dossier.candidat.user.first_name}{" "}
+                            {soutenance.dossier.candidat.user.last_name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {format(dateHeure, "HH'h'mm")}
+                            {soutenance.salle && ` \u2022 ${soutenance.salle.nom}`}
+                            {soutenance.dossier.candidat.departement &&
+                              ` \u2022 ${soutenance.dossier.candidat.departement.nom}`}
+                          </p>
+                        </div>
+                      </div>
+                      <StatusBadge
+                        status={soutenance.statut as SoutenanceStatus}
+                      />
                     </div>
-                    <div>
-                      <p className="font-medium">{soutenance.candidat}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {soutenance.heure} • {soutenance.salle} • {soutenance.departement}
-                      </p>
-                    </div>
-                  </div>
-                  <StatusBadge status={soutenance.status} />
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
+        {/* Recent Activity - soutenances terminées récemment */}
         <Card>
           <CardHeader className="pb-4">
             <CardTitle className="text-lg font-semibold">
-              Activité récente
+              Dernières terminées
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentActivity.map((activity, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <div className="mt-1 h-2 w-2 rounded-full bg-primary" />
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {activity.action}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {activity.detail}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {activity.time}
-                    </p>
+            {recentCompleted.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Aucune soutenance terminée
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {recentCompleted.map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex items-start gap-3 cursor-pointer hover:bg-muted/50 rounded-lg p-2 -mx-2 transition-colors"
+                    onClick={() => navigate(`/soutenances/${s.id}`)}
+                  >
+                    <div className="mt-1 h-2 w-2 rounded-full bg-success" />
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {s.dossier.candidat.user.first_name}{" "}
+                        {s.dossier.candidat.user.last_name}
+                      </p>
+                      <p className="text-sm text-muted-foreground line-clamp-1">
+                        {s.dossier.titre_memoire}
+                      </p>
+                      {s.date_heure && (
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(s.date_heure), "dd MMM yyyy", {
+                            locale: fr,
+                          })}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

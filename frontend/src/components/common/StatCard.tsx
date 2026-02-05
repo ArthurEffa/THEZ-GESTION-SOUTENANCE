@@ -12,17 +12,19 @@ interface StatCardProps {
     isPositive: boolean;
   };
   className?: string;
-  iconClassName?: string;
+  iconBg?: string;
+  iconColor?: string;
 }
 
-export function StatCard({ 
-  title, 
-  value, 
-  subtitle, 
-  icon: Icon, 
+export function StatCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
   trend,
   className,
-  iconClassName 
+  iconBg = "bg-primary/10",
+  iconColor = "text-primary",
 }: StatCardProps) {
   return (
     <Card className={cn("card-hover overflow-hidden", className)}>
@@ -47,12 +49,9 @@ export function StatCard({
           </div>
           <div className={cn(
             "flex h-12 w-12 items-center justify-center rounded-xl",
-            iconClassName || "bg-primary/10"
+            iconBg
           )}>
-            <Icon className={cn(
-              "h-6 w-6",
-              iconClassName ? "text-primary-foreground" : "text-primary"
-            )} />
+            <Icon className={cn("h-6 w-6", iconColor)} />
           </div>
         </div>
       </CardContent>

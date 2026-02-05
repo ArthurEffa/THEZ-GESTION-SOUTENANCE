@@ -120,27 +120,32 @@ export default function Dashboard() {
           value={nbCandidats}
           subtitle="Enregistrés"
           icon={Users}
+          iconBg="bg-primary/10"
+          iconColor="text-primary"
         />
         <StatCard
           title="Soutenances"
           value={nbSoutenances}
           subtitle="Total créées"
           icon={Calendar}
-          iconClassName="bg-info/10"
+          iconBg="bg-info/10"
+          iconColor="text-info"
         />
         <StatCard
           title="Planifiées"
           value={soutenancesPlanifiees.length}
           subtitle="À venir"
           icon={Clock}
-          iconClassName="bg-warning/10"
+          iconBg="bg-warning/10"
+          iconColor="text-warning"
         />
         <StatCard
           title="Terminées"
           value={soutenancesTerminees.length}
           subtitle="Soutenances validées"
           icon={CheckCircle2}
-          iconClassName="bg-success/10"
+          iconBg="bg-success/10"
+          iconColor="text-success"
         />
       </div>
 

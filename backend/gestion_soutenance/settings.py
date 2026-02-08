@@ -150,6 +150,15 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# Supabase Storage
+SUPABASE_URL = config('SUPABASE_URL', default='')
+SUPABASE_SERVICE_ROLE_KEY = config('SUPABASE_SERVICE_ROLE_KEY', default='')
+SUPABASE_STORAGE_BUCKET = config('SUPABASE_STORAGE_BUCKET', default='THEZ-DOCUMENT')
+
+# Si Supabase est configure, utiliser le storage Supabase
+if SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY:
+    DEFAULT_FILE_STORAGE = 'app_soutenance.storage.SupabaseStorage'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 

@@ -43,9 +43,43 @@ export default function MonDossierPage() {
 
     const { data: dossier, isLoading: isLoadingDossier } = useGetMonDossier();
 
-    const uploadMutation = useMutation(/* ... */);
-    const submitMutation = useMutation(/* ... */);
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, pieceType: TypePiece) => { /* ... */ };
+    const uploadMutation = useMutation({
+        mutationFn: (data: { file: File; type: TypePiece }) =>
+            documentService.create({
+                dossier_id: dossier!.id,
+                type_piece: data.type,
+                nom: data.file.name,
+                fichier: data.file,
+            }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['monDossier'] });
+            toast.success("Document uploadé avec succès");
+            setUploading(null);
+        },
+        onError: () => {
+            toast.error("Erreur lors de l'upload du document");
+            setUploading(null);
+        },
+    });
+
+    const submitMutation = useMutation({
+        mutationFn: () => dossierService.update(dossier!.id, { statut: 'DEPOSE' }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['monDossier'] });
+            toast.success("Dossier soumis avec succès !");
+        },
+        onError: () => {
+            toast.error("Erreur lors de la soumission du dossier");
+        },
+    });
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, pieceType: TypePiece) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploading(pieceType);
+        uploadMutation.mutate({ file, type: pieceType });
+        e.target.value = '';
+    };
     const allRequiredFilesUploaded = dossier ? PIECES_REQUISES.every(p => !p.obligatoire || dossier.documents.some(d => d.type_piece === p.type)) : false;
 
     if (isLoadingDossier) return <div className="h-64 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin"/></div>;
@@ -88,7 +122,7 @@ export default function MonDossierPage() {
                                             {document ? <CheckCircle className="h-6 w-6 text-green-500"/> : <Paperclip className="h-6 w-6 text-muted-foreground"/>}
                                             <div><p className="font-medium">{piece.label} {piece.obligatoire && <span className="text-destructive">*</span>}</p>{document && <a href={document.fichier} target="_blank" className="text-xs text-blue-600 hover:underline">Voir le fichier</a>}</div>
                                         </div>
-                                        {dossier.statut === 'BROUILLON' || dossier.statut === 'REJETE' && 
+                                        {(dossier.statut === 'BROUILLON' || dossier.statut === 'REJETE') &&
                                             <Button asChild variant="secondary" size="sm"><Label htmlFor={`upload-${piece.type}`} className="cursor-pointer">
                                                 {uploading === piece.type ? <Loader2 className="h-4 w-4 animate-spin"/> : <Upload className="h-4 w-4"/>}
                                                 <span className="ml-2">{document ? "Remplacer" : "Déposer"}</span>

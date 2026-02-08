@@ -25,6 +25,9 @@ drf-yasg>=1.21.7
 # Filters
 django-filter>=23.3
 
+# Supabase Storage
+supabase>=2.0.0
+
 # Utils
 python-dateutil>=2.8.2
 pytz>=2023.3

@@ -83,11 +83,11 @@ export default function SalleDetailPage() {
                                 {isLoadingSoutenances ? (
                                     <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="h-6 w-6 animate-spin" /></TableCell></TableRow>
                                 ) : soutenances.length > 0 ? (
-                                    soutenances.map((soutenance) => (
+                                    soutenances.map((soutenance: any) => (
                                         <TableRow key={soutenance.id}>
-                                            <TableCell className="font-medium">{new Date(soutenance.date_heure).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</TableCell>
-                                            <TableCell>{soutenance.dossier.candidat.nom_complet}</TableCell>
-                                            <TableCell className="text-muted-foreground max-w-sm truncate">{soutenance.dossier.titre_memoire}</TableCell>
+                                            <TableCell className="font-medium">{soutenance.date_heure ? new Date(soutenance.date_heure).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "-"}</TableCell>
+                                            <TableCell>{soutenance.dossier?.candidat_nom || "-"}</TableCell>
+                                            <TableCell className="text-muted-foreground max-w-sm truncate">{soutenance.dossier?.titre_memoire || "-"}</TableCell>
                                             <TableCell className="text-right">
                                                 <Badge variant={soutenance.statut === 'TERMINEE' ? 'secondary' : 'default'}>{STATUT_SOUTENANCE_LABELS[soutenance.statut]}</Badge>
                                             </TableCell>

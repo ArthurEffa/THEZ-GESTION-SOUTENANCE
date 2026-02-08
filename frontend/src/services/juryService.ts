@@ -38,10 +38,10 @@ class JuryService {
   }
 
   async getByEnseignantId(enseignantId: string): Promise<Jury[]> {
-      const allJurys = await this.getAll();
-      return allJurys.filter(jury => 
-          jury.composition?.some(membre => membre.enseignant_id === enseignantId)
-      );
+      const response = await api.get('/jurys/', {
+        params: { enseignant: enseignantId }
+      });
+      return response.data.results || response.data;
   }
 }
 

@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import candidatService from "@/services/candidatService";
 import dossierService from "@/services/dossierService";
+import soutenanceService from "@/services/soutenanceService";
 import { CYCLE_LABELS, STATUT_DOSSIER_LABELS, STATUT_SOUTENANCE_LABELS } from "@/types/models";
 import { CreateDossierDialog } from "@/components/candidats/CreateDossierDialog";
 
@@ -43,6 +44,12 @@ export default function CandidatDetailPage() {
   const { data: dossiers = [], isLoading: isLoadingDossiers } = useQuery({
     queryKey: ['dossiers', 'candidat', id],
     queryFn: () => dossierService.getByCandidatId(id!),
+    enabled: Boolean(id),
+  });
+
+  const { data: soutenances = [], isLoading: isLoadingSoutenances } = useQuery({
+    queryKey: ['soutenances', 'candidat', id],
+    queryFn: () => soutenanceService.getByCandidatId(id!),
     enabled: Boolean(id),
   });
 
@@ -157,8 +164,20 @@ export default function CandidatDetailPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {/* Placeholder data - to be replaced with actual soutenance data */}
-                            <TableRow><TableCell colSpan={4} className="text-center h-24 text-muted-foreground">Aucune soutenance planifiée.</TableCell></TableRow>
+                            {isLoadingSoutenances ? (
+                                <TableRow><TableCell colSpan={4} className="text-center"><Loader2 className="inline-block h-6 w-6 animate-spin" /></TableCell></TableRow>
+                            ) : soutenances.length > 0 ? (
+                                soutenances.map(soutenance => (
+                                    <TableRow key={soutenance.id} className="cursor-pointer hover:bg-muted/50">
+                                        <TableCell className="font-medium max-w-xs truncate">{soutenance.dossier?.titre_memoire || "-"}</TableCell>
+                                        <TableCell>{soutenance.date_heure ? formatDate(soutenance.date_heure) : "-"}</TableCell>
+                                        <TableCell>{soutenance.jury?.nom || "-"}</TableCell>
+                                        <TableCell><Badge variant="outline">{STATUT_SOUTENANCE_LABELS[soutenance.statut]}</Badge></TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow><TableCell colSpan={4} className="text-center h-24 text-muted-foreground">Aucune soutenance planifiée.</TableCell></TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </Card>

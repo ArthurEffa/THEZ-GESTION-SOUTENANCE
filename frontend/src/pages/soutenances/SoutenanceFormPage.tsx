@@ -23,7 +23,14 @@ export default function SoutenanceFormPage() {
   const isEditing = Boolean(id);
   const queryClient = useQueryClient();
 
-  const [formData, setFormData] = useState<Partial<SoutenanceFormData>>({});
+  const [formData, setFormData] = useState<Partial<SoutenanceFormData>>({
+    dossier_id: "",
+    jury_id: "",
+    salle_id: "",
+    date_heure: "",
+    duree_minutes: 60,
+    ordre_passage: undefined,
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { data: dossiers = [] } = useQuery({ queryKey: ['dossiers', { statut: 'VALIDE' }], queryFn: () => dossierService.getAll({ statut: 'VALIDE' }) });
@@ -96,7 +103,7 @@ export default function SoutenanceFormPage() {
             <Card><CardContent className="pt-6">
                 <h3 className="text-lg font-semibold mb-4">Détails de la Soutenance</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                    <div className="md:col-span-2"><Label>Dossier du candidat</Label><Select value={formData.dossier_id} onValueChange={dossier_id => setFormData({...formData, dossier_id})}><SelectTrigger className={errors.dossier_id ? "border-destructive" : ""}><SelectValue placeholder="Sélectionner un dossier validé"/></SelectTrigger><SelectContent>{dossiers.map(d => <SelectItem key={d.id} value={d.id}>{d.candidat_nom} - {d.titre_memoire}</SelectItem>)}</SelectContent></Select>{errors.dossier_id && <p className="text-sm text-destructive">{errors.dossier_id}</p>}</div>
+                    <div className="md:col-span-2"><Label>Dossier du candidat</Label><Select value={formData.dossier_id} onValueChange={dossier_id => setFormData({...formData, dossier_id})}><SelectTrigger className={errors.dossier_id ? "border-destructive" : ""}><SelectValue placeholder="Sélectionner un dossier validé"/></SelectTrigger><SelectContent>{dossiers.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.candidat?.nom_complet || d.candidat_nom || "-"} - {d.titre_memoire}</SelectItem>)}</SelectContent></Select>{errors.dossier_id && <p className="text-sm text-destructive">{errors.dossier_id}</p>}</div>
                     <div><Label>Jury assigné</Label><Select value={formData.jury_id} onValueChange={jury_id => setFormData({...formData, jury_id})}><SelectTrigger><SelectValue placeholder="Optionnel"/></SelectTrigger><SelectContent>{jurys.map(j => <SelectItem key={j.id} value={j.id}>{j.nom}</SelectItem>)}</SelectContent></Select></div>
                     <div><Label>Salle</Label><Select value={formData.salle_id} onValueChange={salle_id => setFormData({...formData, salle_id})}><SelectTrigger><SelectValue placeholder="Optionnel"/></SelectTrigger><SelectContent>{salles.map(s => <SelectItem key={s.id} value={s.id}>{s.nom} ({s.batiment})</SelectItem>)}</SelectContent></Select></div>
                     <div><Label>Date et Heure</Label><Input type="datetime-local" value={formData.date_heure || ''} onChange={e => setFormData({...formData, date_heure: e.target.value})} className={errors.date_heure ? "border-destructive" : ""} />{errors.date_heure && <p className="text-sm text-destructive">{errors.date_heure}</p>}</div>

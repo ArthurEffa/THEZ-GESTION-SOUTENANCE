@@ -242,11 +242,10 @@ export default function SoutenancesPage() {
                           {format(new Date(s.date_heure!), "HH:mm")}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {s.dossier.candidat.user.first_name}{" "}
-                          {s.dossier.candidat.user.last_name}
+                          {s.dossier?.candidat_nom || "-"}
                         </TableCell>
                         <TableCell className="text-muted-foreground truncate max-w-xs">
-                          {s.dossier.titre_memoire}
+                          {s.dossier?.titre_memoire || "-"}
                         </TableCell>
                         <TableCell>{s.salle?.nom || "—"}</TableCell>
                         <TableCell className="text-right">
@@ -298,7 +297,7 @@ export default function SoutenancesPage() {
                             {s.dossier.candidat.user.last_name}
                           </TableCell>
                           <TableCell className="text-muted-foreground truncate max-w-xs">
-                            {s.dossier.titre_memoire}
+                            {s.dossier?.titre_memoire || "-"}
                           </TableCell>
                           <TableCell>{s.salle?.nom || "—"}</TableCell>
                           <TableCell className="text-right">

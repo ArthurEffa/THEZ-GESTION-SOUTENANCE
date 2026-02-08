@@ -47,6 +47,16 @@ class DossierService {
   }
 
   /**
+   * Récupérer les dossiers encadrés par un enseignant
+   */
+  async getByEncadreurId(encadreurId: string): Promise<DossierSoutenance[]> {
+    const response = await api.get('/dossiers/', {
+      params: { encadreur: encadreurId }
+    });
+    return response.data.results || response.data;
+  }
+
+  /**
    * Créer un nouveau dossier (Admin pour un candidat, ou Candidat pour lui-même)
    */
   async create(data: DossierFormData): Promise<DossierSoutenance> {

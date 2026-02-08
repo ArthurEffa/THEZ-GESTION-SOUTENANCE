@@ -84,7 +84,7 @@ export default function JuryDetailPage() {
                             ) : soutenances.length > 0 ? (
                                 soutenances.map(soutenance => (
                                     <div key={soutenance.id} className="p-3 border-b last:border-b-0">
-                                        <p className="font-medium text-sm">{soutenance.candidat_nom}</p>
+                                        <p className="font-medium text-sm">{soutenance.dossier?.candidat_nom || "-"}</p>
                                         <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
                                             <Calendar className="h-3 w-3" />
                                             <span>{formatDate(soutenance.date_heure)}</span>

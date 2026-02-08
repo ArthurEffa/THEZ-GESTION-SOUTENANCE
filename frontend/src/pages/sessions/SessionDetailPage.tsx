@@ -79,7 +79,7 @@ export default function SessionDetailPage() {
                 <TabsContent value="dossiers">
                     <Card><CardContent className="pt-6">{isLoadingDossiers ? <Loader2/> : <Table>
                         <TableHeader><TableRow><TableHead>Candidat</TableHead><TableHead>Titre</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
-                        <TableBody>{dossiers.map(d => <TableRow key={d.id} onClick={() => navigate(`/dossiers/${d.id}`)} className="cursor-pointer"><TableCell>{d.candidat_nom}</TableCell><TableCell>{d.titre_memoire}</TableCell><TableCell><Badge>{STATUT_DOSSIER_LABELS[d.statut]}</Badge></TableCell></TableRow>)}</TableBody>
+                        <TableBody>{dossiers.map((d: any) => <TableRow key={d.id} onClick={() => navigate(`/dossiers/${d.id}`)} className="cursor-pointer"><TableCell>{d.candidat?.nom_complet || d.candidat_nom || "-"}</TableCell><TableCell>{d.titre_memoire}</TableCell><TableCell><Badge>{STATUT_DOSSIER_LABELS[d.statut]}</Badge></TableCell></TableRow>)}</TableBody>
                     </Table>}</CardContent></Card>
                 </TabsContent>
 
@@ -93,7 +93,7 @@ export default function SessionDetailPage() {
                 <TabsContent value="soutenances">
                      <Card><CardContent className="pt-6">{isLoadingSoutenances ? <Loader2/> : <Table>
                         <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Candidat</TableHead><TableHead>Salle</TableHead><TableHead>Statut</TableHead></TableRow></TableHeader>
-                        <TableBody>{soutenances.map(s => <TableRow key={s.id} onClick={() => navigate(`/soutenances/${s.id}`)} className="cursor-pointer"><TableCell>{formatDate(s.date_heure)}</TableCell><TableCell>{s.candidat_nom}</TableCell><TableCell>{s.salle_nom}</TableCell><TableCell><Badge>{STATUT_SOUTENANCE_LABELS[s.statut]}</Badge></TableCell></TableRow>)}</TableBody>
+                        <TableBody>{soutenances.map((s: any) => <TableRow key={s.id} onClick={() => navigate(`/soutenances/${s.id}`)} className="cursor-pointer"><TableCell>{formatDate(s.date_heure)}</TableCell><TableCell>{s.dossier?.candidat_nom || "-"}</TableCell><TableCell>{s.salle ? `${s.salle.nom} (${s.salle.batiment})` : "-"}</TableCell><TableCell><Badge>{STATUT_SOUTENANCE_LABELS[s.statut]}</Badge></TableCell></TableRow>)}</TableBody>
                     </Table>}</CardContent></Card>
                 </TabsContent>
             </Tabs>

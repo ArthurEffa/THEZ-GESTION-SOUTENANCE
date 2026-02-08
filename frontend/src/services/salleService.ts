@@ -17,9 +17,8 @@ export interface SalleFormData {
 }
 
 class SalleService {
-  async getAll(): Promise<Salle[]> {
-    const response = await api.get('/salles/');
-    // L'API retourne un objet paginé {count, next, prev, results}
+  async getAll(params?: { est_disponible?: boolean }): Promise<Salle[]> {
+    const response = await api.get('/salles/', { params });
     return response.data.results || response.data;
   }
 

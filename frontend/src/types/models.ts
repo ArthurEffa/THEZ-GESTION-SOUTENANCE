@@ -159,6 +159,13 @@ export interface MembreJury {
   created_at: string;
 }
 
+export interface JuryFormData {
+  nom: string;
+  session_id: string;
+  statut?: StatutJury;
+  membres_data?: { enseignant_id: string; role: RoleMembreJury }[];
+}
+
 export interface Soutenance {
   id: string;
   dossier: DossierSoutenance;

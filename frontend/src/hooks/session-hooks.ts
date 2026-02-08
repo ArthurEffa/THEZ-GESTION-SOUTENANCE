@@ -35,7 +35,7 @@ export const useGetJurysBySession = (sessionId: string) => {
 export const useGetSoutenancesBySession = (sessionId: string) => {
     return useQuery({
         queryKey: ["soutenances", { session: sessionId }],
-        queryFn: () => soutenanceService.getAll({ session: sessionId }),
+        queryFn: () => soutenanceService.getAll({ dossier__session: sessionId }),
         enabled: !!sessionId,
     });
 };

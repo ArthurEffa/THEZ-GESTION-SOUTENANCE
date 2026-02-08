@@ -355,7 +355,7 @@ class SimpleSalleSerializer(serializers.ModelSerializer):
     """Serializer minimal pour Salle (objets imbriqués)"""
     class Meta:
         model = Salle
-        fields = ['id', 'nom', 'batiment']
+        fields = ['id', 'nom', 'batiment', 'capacite', 'est_disponible']
 
 
 class SessionSoutenanceSerializer(serializers.ModelSerializer):
@@ -532,15 +532,29 @@ class JurySerializer(serializers.ModelSerializer):
         return jury
 
 
+class SimpleMembreJurySerializer(serializers.ModelSerializer):
+    """Serializer minimal pour MembreJury (listes)"""
+    enseignant_id = serializers.UUIDField(source='enseignant.id')
+    nom_complet = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MembreJury
+        fields = ['id', 'enseignant_id', 'nom_complet', 'role']
+
+    def get_nom_complet(self, obj):
+        return obj.enseignant.user.get_full_name()
+
+
 class JuryListSerializer(serializers.ModelSerializer):
     """Serializer simplifié pour liste de jurys"""
     session_titre = serializers.SerializerMethodField()
     nb_membres = serializers.SerializerMethodField()
     president = serializers.SerializerMethodField()
+    composition = SimpleMembreJurySerializer(many=True, read_only=True)
 
     class Meta:
         model = Jury
-        fields = ['id', 'nom', 'session_titre', 'nb_membres', 'president', 'statut', 'created_at']
+        fields = ['id', 'nom', 'session_titre', 'nb_membres', 'president', 'composition', 'statut', 'created_at']
 
     def get_session_titre(self, obj):
         return obj.session.titre

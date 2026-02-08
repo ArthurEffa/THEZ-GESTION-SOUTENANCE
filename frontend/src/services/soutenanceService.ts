@@ -33,6 +33,8 @@ class SoutenanceService {
   async getAll(params?: {
     statut?: string;
     salle?: string;
+    dossier__session?: string;
+    dossier__candidat?: string;
   }): Promise<Soutenance[]> {
     const response = await api.get('/soutenances/', { params });
     return response.data.results || response.data;
@@ -99,6 +101,16 @@ class SoutenanceService {
   async getMesSoutenances(): Promise<Soutenance[]> {
     const response = await api.get('/soutenances/mes_soutenances/');
     return response.data;
+  }
+
+  /**
+   * Récupérer les soutenances d'un candidat
+   */
+  async getByCandidatId(candidatId: string): Promise<Soutenance[]> {
+    const response = await api.get('/soutenances/', {
+      params: { dossier__candidat: candidatId }
+    });
+    return response.data.results || response.data;
   }
 }
 

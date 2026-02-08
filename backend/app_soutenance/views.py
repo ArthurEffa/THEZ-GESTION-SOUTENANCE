@@ -101,33 +101,27 @@ class CandidatProfileViewSet(viewsets.ModelViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return CandidatProfile.objects.none()
 
+        base_qs = CandidatProfile.objects.select_related(
+            'user', 'departement'
+        ).prefetch_related('dossiers')
+
         user = self.request.user
         if user.role == 'ADMIN':
-            return CandidatProfile.objects.all()
+            return base_qs
         elif user.role == 'CANDIDAT':
-            # Candidat voit uniquement son propre profil
-            return CandidatProfile.objects.filter(user=user)
+            return base_qs.filter(user=user)
         elif user.role == 'ENSEIGNANT':
-            # Enseignant voit:
-            # 1. Tous les candidats de son/ses département(s)
-            # 2. Candidats qu'il encadre
-            # 3. Candidats dont il est membre du jury
             from django.db.models import Q
 
             enseignant_profile = user.enseignant_profile
 
-            # Candidats des départements de l'enseignant
             candidats_departement = Q(departement__in=enseignant_profile.departements.all())
-
-            # Candidats qu'il encadre
             candidats_encadres = Q(dossiers__encadreur=enseignant_profile)
-
-            # Candidats dont il est membre du jury
             candidats_jury = Q(
                 dossiers__soutenance__jury__composition__enseignant=enseignant_profile
             )
 
-            return CandidatProfile.objects.filter(
+            return base_qs.filter(
                 candidats_departement | candidats_encadres | candidats_jury
             ).distinct()
 
@@ -143,6 +137,11 @@ class EnseignantProfileViewSet(viewsets.ModelViewSet):
     search_fields = ['user__first_name', 'user__last_name', 'user__email']
     ordering_fields = ['created_at', 'user__last_name']
     filterset_fields = ['grade', 'departements']
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return EnseignantProfile.objects.none()
+        return EnseignantProfile.objects.select_related('user').prefetch_related('departements')
 
 
 # ============================================================================
@@ -222,31 +221,29 @@ class SalleViewSet(viewsets.ModelViewSet):
 class DossierSoutenanceViewSet(viewsets.ModelViewSet):
     """ViewSet pour gérer les dossiers de soutenance"""
     queryset = DossierSoutenance.objects.all()
+    serializer_class = DossierSoutenanceSerializer
     permission_classes = [IsAuthenticated, DossierSoutenancePermission]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['titre_memoire', 'candidat__matricule', 'candidat__user__last_name']
     ordering_fields = ['date_depot', 'created_at']
-    filterset_fields = ['statut', 'session', 'candidat', 'candidat__cycle', 'demande_suppression']
-
-    def get_serializer_class(self):
-        """Utiliser un serializer différent pour la liste"""
-        if self.action == 'list':
-            return DossierSoutenanceListSerializer
-        return DossierSoutenanceSerializer
+    filterset_fields = ['statut', 'session', 'candidat', 'encadreur', 'candidat__cycle', 'demande_suppression']
 
     def get_queryset(self):
         """Filtrer selon le rôle"""
-        # Court-circuiter pour la génération du schéma Swagger
         if getattr(self, 'swagger_fake_view', False):
             return DossierSoutenance.objects.none()
 
+        base_qs = DossierSoutenance.objects.select_related(
+            'candidat__user', 'session', 'encadreur__user'
+        ).prefetch_related('documents')
+
         user = self.request.user
         if user.role == 'ADMIN':
-            return DossierSoutenance.objects.all()
+            return base_qs
         elif user.role == 'CANDIDAT':
-            return DossierSoutenance.objects.filter(candidat__user=user)
+            return base_qs.filter(candidat__user=user)
         elif user.role == 'ENSEIGNANT':
-            return DossierSoutenance.objects.filter(encadreur__user=user)
+            return base_qs.filter(encadreur__user=user)
         return DossierSoutenance.objects.none()
 
     def perform_create(self, serializer):
@@ -288,8 +285,10 @@ class DossierSoutenanceViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated, IsCandidat])
     def mes_dossiers(self, request):
         """Récupérer les dossiers du candidat connecté"""
-        dossiers = DossierSoutenance.objects.filter(candidat__user=request.user)
-        serializer = self.get_serializer(dossiers, many=True)
+        dossiers = DossierSoutenance.objects.select_related(
+            'candidat__user', 'session', 'encadreur__user'
+        ).prefetch_related('documents').filter(candidat__user=request.user)
+        serializer = DossierSoutenanceSerializer(dossiers, many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsCandidat])
@@ -358,17 +357,18 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Filtrer selon le rôle"""
-        # Court-circuiter pour la génération du schéma Swagger
         if getattr(self, 'swagger_fake_view', False):
             return Document.objects.none()
 
+        base_qs = Document.objects.select_related('dossier__candidat__user', 'dossier__encadreur__user')
+
         user = self.request.user
         if user.role == 'ADMIN':
-            return Document.objects.all()
+            return base_qs
         elif user.role == 'CANDIDAT':
-            return Document.objects.filter(dossier__candidat__user=user)
+            return base_qs.filter(dossier__candidat__user=user)
         elif user.role == 'ENSEIGNANT':
-            return Document.objects.filter(dossier__encadreur__user=user)
+            return base_qs.filter(dossier__encadreur__user=user)
         return Document.objects.none()
 
 
@@ -387,10 +387,15 @@ class JuryViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Charger les relations pour optimiser les requêtes"""
-        return Jury.objects.select_related('session').prefetch_related(
+        qs = Jury.objects.select_related('session').prefetch_related(
             'composition__enseignant__user',
             'composition__enseignant__departements'
         )
+        # Filtre custom : ?enseignant=<uuid> pour trouver les jurys d'un enseignant
+        enseignant_id = self.request.query_params.get('enseignant')
+        if enseignant_id:
+            qs = qs.filter(composition__enseignant_id=enseignant_id).distinct()
+        return qs
 
     def get_serializer_class(self):
         """Utiliser un serializer différent pour la liste"""
@@ -439,6 +444,7 @@ class MembreJuryViewSet(viewsets.ModelViewSet):
 class SoutenanceViewSet(viewsets.ModelViewSet):
     """ViewSet pour gérer les soutenances"""
     queryset = Soutenance.objects.all()
+    serializer_class = SoutenanceSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = [
@@ -447,28 +453,25 @@ class SoutenanceViewSet(viewsets.ModelViewSet):
         'dossier__candidat__user__last_name'
     ]
     ordering_fields = ['date_heure', 'ordre_passage', 'created_at']
-    filterset_fields = ['statut', 'salle']
-
-    def get_serializer_class(self):
-        """Utiliser un serializer différent pour la liste"""
-        if self.action == 'list':
-            return SoutenanceListSerializer
-        return SoutenanceSerializer
+    filterset_fields = ['statut', 'salle', 'dossier', 'dossier__candidat', 'dossier__session']
 
     def get_queryset(self):
         """Filtrer selon le rôle"""
-        # Court-circuiter pour la génération du schéma Swagger
         if getattr(self, 'swagger_fake_view', False):
             return Soutenance.objects.none()
 
+        base_qs = Soutenance.objects.select_related(
+            'dossier__candidat__user', 'dossier__session',
+            'dossier__encadreur__user', 'jury', 'salle'
+        ).prefetch_related('jury__composition__enseignant__user')
+
         user = self.request.user
         if user.role == 'ADMIN':
-            return Soutenance.objects.all()
+            return base_qs
         elif user.role == 'CANDIDAT':
-            return Soutenance.objects.filter(dossier__candidat__user=user)
+            return base_qs.filter(dossier__candidat__user=user)
         elif user.role == 'ENSEIGNANT':
-            # Enseignant voit les soutenances où il est membre du jury
-            return Soutenance.objects.filter(
+            return base_qs.filter(
                 jury__composition__enseignant__user=user
             ).distinct()
         return Soutenance.objects.none()
@@ -513,16 +516,21 @@ class SoutenanceViewSet(viewsets.ModelViewSet):
         """Récupérer les soutenances selon le rôle de l'utilisateur"""
         user = request.user
 
+        base_qs = Soutenance.objects.select_related(
+            'dossier__candidat__user', 'dossier__session',
+            'dossier__encadreur__user', 'jury', 'salle'
+        )
+
         if user.role == 'CANDIDAT':
-            soutenances = Soutenance.objects.filter(dossier__candidat__user=user)
+            soutenances = base_qs.filter(dossier__candidat__user=user)
         elif user.role == 'ENSEIGNANT':
-            soutenances = Soutenance.objects.filter(
+            soutenances = base_qs.filter(
                 jury__composition__enseignant__user=user
             ).distinct()
         else:
-            soutenances = Soutenance.objects.all()
+            soutenances = base_qs.all()
 
-        serializer = self.get_serializer(soutenances, many=True)
+        serializer = SoutenanceSerializer(soutenances, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])

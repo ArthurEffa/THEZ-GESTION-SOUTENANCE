@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Eye, EyeOff, Loader2, Mail, Lock } from "lucide-react";
 import { toast } from "sonner";
 
-import logo from "@/assets/logo.jpg";
+import logo from "@/assets/logo.png";
 
 // Schéma de validation
 const loginSchema = z.object({

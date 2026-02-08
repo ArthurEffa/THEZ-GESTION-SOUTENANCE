@@ -73,10 +73,21 @@ export default function MonDossierPage() {
         },
     });
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, pieceType: TypePiece) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, pieceType: TypePiece) => {
         const file = e.target.files?.[0];
         if (!file) return;
         setUploading(pieceType);
+
+        // Supprimer l'ancien document du meme type s'il existe
+        const existingDoc = dossier?.documents.find(d => d.type_piece === pieceType);
+        if (existingDoc) {
+            try {
+                await documentService.delete(existingDoc.id);
+            } catch {
+                // Continue meme si la suppression echoue
+            }
+        }
+
         uploadMutation.mutate({ file, type: pieceType });
         e.target.value = '';
     };

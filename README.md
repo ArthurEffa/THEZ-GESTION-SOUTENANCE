@@ -203,14 +203,43 @@ GESTION DES SOUTENANCES/
 
 ## Workflow
 
-1. **Admin** cree une session de soutenance
-2. **Etudiant** cree son dossier et upload son memoire
-3. **Admin** valide le dossier
-4. **Admin** compose le jury
-5. **Admin** planifie la soutenance
-6. **Notifications** envoyees a tous les concernes
-7. **Soutenance** se deroule
-8. **PV** genere automatiquement
+### 1. Ouverture de session (Admin)
+L'administrateur cree une **session de soutenance** pour une annee academique donnee (ex: 2025-2026). Il definit les dates d'ouverture et de cloture des depots. Les candidats ne peuvent deposer un dossier que pendant une session active.
+
+### 2. Depot du dossier (Candidat)
+Le candidat cree son dossier en renseignant le **titre du memoire**, la **session** et son **encadreur**. Il uploade ensuite ses pieces jointes obligatoires :
+- Memoire final (PDF)
+- Quitus de paiement
+- Certificat de scolarite
+
+Tant que le dossier est en **Brouillon**, le candidat peut modifier et ajouter des documents. Une fois pret, il **soumet** son dossier (statut passe a "Depose").
+
+### 3. Validation du dossier (Admin)
+L'administrateur consulte les dossiers deposes et les examine :
+- **Valider** : le dossier est accepte, le candidat est eligible a la soutenance
+- **Rejeter** : le dossier est renvoye avec un commentaire explicatif. Le candidat peut corriger et re-soumettre
+
+### 4. Composition du jury (Admin)
+Pour chaque soutenance, l'administrateur compose un **jury** avec les roles suivants :
+- **President** : preside la seance
+- **Rapporteur** : evalue le memoire en detail
+- **Examinateur(s)** : posent des questions et evaluent le candidat
+
+Les enseignants concernes sont notifies de leur role.
+
+### 5. Planification de la soutenance (Admin)
+L'administrateur planifie la soutenance en definissant :
+- **Date et heure**
+- **Salle** (parmi les salles disponibles)
+- **Duree** estimee
+- **Ordre de passage** (si plusieurs soutenances le meme jour)
+
+### 6. Deroulement et cloture
+Le jour venu, la soutenance se deroule. L'administrateur peut :
+- **Demarrer** la soutenance (statut "En cours")
+- **Terminer** la soutenance (statut "Terminee")
+
+Le candidat et les membres du jury peuvent consulter les informations de la soutenance depuis leur portail respectif.
 
 ## Auteur
 

@@ -3,7 +3,8 @@ import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { getNavigationForRole } from "@/config/navigation";
-import { useGetDossiersCount } from "@/hooks/dossier-hooks"; // Import du hook
+import { useGetDossiersCount } from "@/hooks/dossier-hooks";
+import { useGetMonDossier } from "@/hooks/me-hooks";
 import {
   Sidebar,
   SidebarContent,
@@ -37,6 +38,12 @@ export function AppSidebar() {
       enabled: user?.role === 'ADMIN',
   });
 
+  // Récupérer le statut du dossier si l'utilisateur est candidat
+  const { data: monDossier } = useGetMonDossier({
+      enabled: user?.role === 'CANDIDAT',
+  });
+  const dossierRejete = monDossier?.statut === 'REJETE';
+
   const navigationItems = user ? getNavigationForRole(user.role) : [];
 
   return (
@@ -57,12 +64,16 @@ export function AppSidebar() {
           {navigationItems.map((item) => {
             const isActive = location.pathname === item.url || (item.url !== "/" && location.pathname.startsWith(item.url));
             const showBadge = (item.url === '/candidats' || item.url === '/dossiers') && dossiersEnAttenteCount > 0;
+            const showRedDot = item.url === '/mon-dossier' && dossierRejete;
 
             return (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton asChild tooltip={collapsed ? item.title : undefined} className={cn("h-8 transition-colors duration-100", isActive ? "bg-sidebar-accent text-sidebar-foreground font-medium" : "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground")}>
                   <NavLink to={item.url}>
-                    <item.icon className="h-4 w-4 shrink-0" />
+                    <div className="relative">
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      {showRedDot && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-sidebar-background" />}
+                    </div>
                     <span className="text-sm">{item.title}</span>
                     {!collapsed && showBadge && <Badge className="ml-auto h-5">{dossiersEnAttenteCount}</Badge>}
                   </NavLink>

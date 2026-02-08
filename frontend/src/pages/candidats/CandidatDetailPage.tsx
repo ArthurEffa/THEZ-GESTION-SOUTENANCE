@@ -6,6 +6,7 @@ import { ArrowLeft, User, Mail, Phone, Calendar, Edit, Plus, FileText, Scale, Lo
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { DossierStatusBadge } from "@/components/common/StatusBadge";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -130,7 +131,7 @@ export default function CandidatDetailPage() {
                                     <TableRow key={dossier.id} onClick={() => navigate(`/dossiers/${dossier.id}`)} className="cursor-pointer hover:bg-muted/50">
                                         <TableCell className="font-medium max-w-xs truncate">{dossier.titre_memoire}</TableCell>
                                         <TableCell>{dossier.session?.titre || "-"}</TableCell>
-                                        <TableCell><Badge variant="outline">{STATUT_DOSSIER_LABELS[dossier.statut]}</Badge></TableCell>
+                                        <TableCell><DossierStatusBadge status={dossier.statut} /></TableCell>
                                         <TableCell>{formatDate(dossier.date_depot)}</TableCell>
                                     </TableRow>
                                 ))

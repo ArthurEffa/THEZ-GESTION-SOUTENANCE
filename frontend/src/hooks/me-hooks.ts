@@ -3,13 +3,12 @@ import dossierService from "@/services/dossierService";
 import soutenanceService from "@/services/soutenanceService";
 
 // Hook pour récupérer le dossier du candidat connecté
-export const useGetMonDossier = () => {
+export const useGetMonDossier = (options?: { enabled?: boolean }) => {
     return useQuery({
         queryKey: ["monDossier"],
-        // La méthode getAll est utilisée car le backend filtre par utilisateur connecté sur cette route
-        queryFn: () => dossierService.getMesDossiers(), 
-        // La donnée retournée est un tableau, mais on ne veut que le premier élément (un candidat n'a qu'un dossier par session)
+        queryFn: () => dossierService.getMesDossiers(),
         select: (data) => data && data.length > 0 ? data[0] : null,
+        enabled: options?.enabled ?? true,
     });
 };
 

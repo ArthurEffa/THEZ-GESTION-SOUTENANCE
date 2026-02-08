@@ -5,6 +5,7 @@ import { ArrowLeft, User, FileText, Calendar, Edit, CheckCircle, XCircle, Scale,
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { DossierStatusBadge } from "@/components/common/StatusBadge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -86,7 +87,7 @@ export default function DossierDetailPage() {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span>Dossier de soutenance</span>
                   <Separator orientation="vertical" className="h-4"/>
-                  <Badge variant="outline">{STATUT_DOSSIER_LABELS[dossier.statut]}</Badge>
+                  <DossierStatusBadge status={dossier.statut} />
                 </div>
             </div>
         </div>

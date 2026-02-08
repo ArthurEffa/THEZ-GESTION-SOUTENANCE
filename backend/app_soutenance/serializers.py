@@ -18,7 +18,7 @@ class SimpleUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'email', 'full_name', 'role']
+        fields = ['id', 'email', 'first_name', 'last_name', 'full_name', 'role', 'phone', 'date_joined']
 
     def get_full_name(self, obj):
         return obj.get_full_name()
@@ -127,11 +127,13 @@ class DepartementSerializer(serializers.ModelSerializer):
 
 class SimpleCandidatProfileSerializer(serializers.ModelSerializer):
     """Serializer minimal pour CandidatProfile (objets imbriqués)"""
+    user = SimpleUserSerializer(read_only=True)
+    departement = SimpleDepartementSerializer(read_only=True)
     nom_complet = serializers.SerializerMethodField()
 
     class Meta:
         model = CandidatProfile
-        fields = ['id', 'matricule', 'nom_complet', 'cycle']
+        fields = ['id', 'user', 'matricule', 'nom_complet', 'cycle', 'departement']
 
     def get_nom_complet(self, obj):
         return obj.user.get_full_name()
@@ -139,11 +141,12 @@ class SimpleCandidatProfileSerializer(serializers.ModelSerializer):
 
 class SimpleEnseignantProfileSerializer(serializers.ModelSerializer):
     """Serializer minimal pour EnseignantProfile (objets imbriqués)"""
+    user = SimpleUserSerializer(read_only=True)
     nom_complet = serializers.SerializerMethodField()
 
     class Meta:
         model = EnseignantProfile
-        fields = ['id', 'nom_complet', 'grade']
+        fields = ['id', 'user', 'nom_complet', 'grade']
 
     def get_nom_complet(self, obj):
         return obj.user.get_full_name()
@@ -460,11 +463,14 @@ class DossierSoutenanceListSerializer(serializers.ModelSerializer):
 
 class SimpleDossierSoutenanceSerializer(serializers.ModelSerializer):
     """Serializer minimal pour DossierSoutenance (objets imbriqués)"""
+    candidat = SimpleCandidatProfileSerializer(read_only=True)
     candidat_nom = serializers.SerializerMethodField()
+    session = SimpleSessionSoutenanceSerializer(read_only=True)
+    encadreur = SimpleEnseignantProfileSerializer(read_only=True)
 
     class Meta:
         model = DossierSoutenance
-        fields = ['id', 'candidat_nom', 'titre_memoire', 'statut']
+        fields = ['id', 'candidat', 'candidat_nom', 'titre_memoire', 'statut', 'session', 'encadreur']
 
     def get_candidat_nom(self, obj):
         return obj.candidat.user.get_full_name()

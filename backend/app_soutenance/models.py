@@ -500,3 +500,23 @@ class Soutenance(models.Model):
 
     def __str__(self):
         return f"Soutenance de {self.dossier.candidat.user.get_full_name()}"
+
+
+# ============================================================================
+# ANALYTICS (KPI site)
+# ============================================================================
+
+class SiteEvent(models.Model):
+    class EventType(models.TextChoices):
+        REPO_CLICK = 'REPO_CLICK', 'Clic repo GitHub'
+        PAGE_VIEW = 'PAGE_VIEW', 'Vue de page'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    event_type = models.CharField(max_length=20, choices=EventType.choices)
+    ip_hash = models.CharField(max_length=64, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Événement site"
+        verbose_name_plural = "Événements site"
+        ordering = ['-created_at']

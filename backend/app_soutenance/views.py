@@ -8,7 +8,7 @@ from django.utils import timezone
 from .models import (
     CustomUser, Departement, CandidatProfile, EnseignantProfile,
     SessionSoutenance, Salle, DossierSoutenance, Document,
-    Jury, MembreJury, Soutenance
+    Jury, MembreJury, Soutenance, SiteEvent
 )
 from .serializers import (
     CustomUserSerializer, UserRegistrationSerializer,
@@ -542,3 +542,49 @@ class SoutenanceViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(soutenances, many=True)
         return Response(serializer.data)
+
+
+# ============================================================================
+# ANALYTICS (public, sans authentification)
+# ============================================================================
+
+import hashlib
+from rest_framework.decorators import api_view, permission_classes as perm_classes
+
+
+@api_view(['POST'])
+@perm_classes([AllowAny])
+def track_event(request):
+    """Enregistrer un événement (clic repo, vue page). Anti-bot: 1 event/IP/5s."""
+    event_type = request.data.get('event_type')
+    if event_type not in ['REPO_CLICK', 'PAGE_VIEW']:
+        return Response({'error': 'Type invalide'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Hash de l'IP pour anti-doublon sans stocker de données perso
+    ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
+    if ',' in ip:
+        ip = ip.split(',')[0].strip()
+    ip_hash = hashlib.sha256(ip.encode()).hexdigest()[:32]
+
+    # Rate limit: pas le même event depuis la même IP dans les 5 dernières secondes
+    from datetime import timedelta
+    recent = SiteEvent.objects.filter(
+        event_type=event_type,
+        ip_hash=ip_hash,
+        created_at__gte=timezone.now() - timedelta(seconds=5)
+    ).exists()
+
+    if recent:
+        return Response({'status': 'duplicate'}, status=status.HTTP_200_OK)
+
+    SiteEvent.objects.create(event_type=event_type, ip_hash=ip_hash)
+    return Response({'status': 'ok'}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@perm_classes([AllowAny])
+def get_stats(request):
+    """Renvoyer les compteurs publics."""
+    repo_clicks = SiteEvent.objects.filter(event_type='REPO_CLICK').count()
+    page_views = SiteEvent.objects.filter(event_type='PAGE_VIEW').count()
+    return Response({'repo_clicks': repo_clicks, 'page_views': page_views})

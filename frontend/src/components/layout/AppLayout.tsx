@@ -2,7 +2,9 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Outlet } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Search, Settings, HelpCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Search, Settings, HelpCircle, Github } from "lucide-react";
+import analyticsService from "@/services/analyticsService";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,8 +13,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
+
 export function AppLayout() {
   const { user, logout } = useAuth();
+  const { data: stats } = useQuery({
+    queryKey: ['site-stats'],
+    queryFn: () => analyticsService.getStats(),
+    refetchInterval: 30000,
+    enabled: IS_DEMO,
+  });
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
@@ -39,6 +49,21 @@ export function AppLayout() {
               </div>
 
               <div className="flex items-center gap-1">
+                {IS_DEMO && (
+                  <button
+                    className="relative flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 text-white hover:bg-slate-700 transition-colors text-xs font-medium"
+                    onClick={() => analyticsService.trackRepoClick()}
+                    title="Voir le code source sur GitHub"
+                  >
+                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                    </span>
+                    <Github className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">GitHub</span>
+                    <span className="tabular-nums">{stats?.repo_clicks ?? 0}</span>
+                  </button>
+                )}
                 <button className="p-1.5 rounded hover:bg-accent text-muted-foreground transition-colors">
                   <HelpCircle className="h-4 w-4" />
                 </button>

@@ -1,17 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Eye, EyeOff, Loader2, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Loader2, Mail, Lock, Github, Users, MousePointerClick } from "lucide-react";
 import { toast } from "sonner";
+import analyticsService from "@/services/analyticsService";
 
 import logo from "@/assets/logo.png";
+
+const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
 
 // Schéma de validation
 const loginSchema = z.object({
@@ -35,13 +39,26 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const { data: stats } = useQuery({
+    queryKey: ['site-stats'],
+    queryFn: () => analyticsService.getStats(),
+    refetchInterval: 15000,
+    enabled: IS_DEMO,
+  });
+
+  useEffect(() => {
+    if (IS_DEMO) analyticsService.trackPageView();
+  }, []);
+
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: IS_DEMO
+      ? { email: "admin@ecole.fr", password: "admin123456789" }
+      : { email: "", password: "" },
   });
 
   const onSubmit = async (data: LoginFormData) => {
@@ -60,7 +77,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4">
       <Card className="w-full max-w-md shadow-lg border-slate-200">
         <CardHeader className="flex flex-col items-center space-y-4 pb-2">
           <img
@@ -151,6 +168,43 @@ export default function Login() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Encadré Open Source — visible uniquement en mode démo */}
+      {IS_DEMO && (
+        <div className="w-full max-w-md mt-4 p-4 rounded-lg border border-slate-200 bg-white shadow-sm space-y-3">
+          <div className="flex items-center gap-2">
+            <Github className="h-5 w-5 text-slate-700" />
+            <h3 className="font-semibold text-slate-800 text-sm">Projet Open Source</h3>
+          </div>
+          <p className="text-xs text-slate-500">
+            THEZ est libre et open source. Clonez le repo, adaptez-le ou contribuez.
+          </p>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => analyticsService.trackRepoClick()}
+            >
+              <Github className="h-4 w-4" />
+              Cloner le repo
+            </Button>
+            <div className="flex items-center gap-3 text-xs text-slate-500">
+              <span className="flex items-center gap-1">
+                <MousePointerClick className="h-3.5 w-3.5" />
+                <strong className="text-slate-700">{stats?.repo_clicks ?? 0}</strong> clics
+              </span>
+              <span className="flex items-center gap-1">
+                <Users className="h-3.5 w-3.5" />
+                <strong className="text-slate-700">{stats?.page_views ?? 0}</strong> vues
+              </span>
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-400">
+            Identifiants de test pré-remplis ci-dessus. Cliquez sur "Se connecter" pour tester.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
